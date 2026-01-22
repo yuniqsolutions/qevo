@@ -1,0 +1,82 @@
+{
+  "name": "qevo",
+  "version": "1.0.16",
+  "description": "Cross-browser extension toolkit - Unified API for Chrome & Firefox extension development with messaging, storage, webRequest, and tab management",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": {
+        "require": "./lib/index.d.ts",
+        "default": "./lib/index.d.ts"
+      },
+      "worker": {
+        "require": "./lib/index.cjs",
+        "default": "./lib/index.js"
+      },
+      "default": {
+        "require": "./lib/index.cjs",
+        "default": "./lib/index.js"
+      }
+    }
+  },
+  "files": [
+    "lib/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuniqsolutions/qevo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yuniqsolutions/qevo/issues"
+  },
+  "homepage": "https://github.com/yuniqsolutions/qevo#readme",
+  "keywords": [
+    "browser-extension",
+    "chrome-extension",
+    "firefox-extension",
+    "webextension",
+    "cross-browser",
+    "messaging",
+    "storage",
+    "webrequest",
+    "tab-management",
+    "typescript",
+    "chrome",
+    "firefox",
+    "manifest-v3",
+    "mv3",
+    "extension-toolkit"
+  ],
+  "author": {
+    "name": "Olajide Mathew Ogundary",
+    "email": "olajide.mathew@yuniq.solutions",
+    "url": "https://yuniq.solutions"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@types/chrome": "^0.0.200 || ^0.1.0",
+    "@types/firefox-webext-browser": ">=120.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/chrome": {
+      "optional": true
+    },
+    "@types/firefox-webext-browser": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.6",
+    "@types/chrome": "^0.1.36",
+    "@types/firefox-webext-browser": "^143.0.0",
+    "@types/node": "^25.0.10"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}
