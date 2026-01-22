@@ -1,6 +1,6 @@
 {
   "name": "qevo",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "description": "Cross-browser extension toolkit - Unified API for Chrome & Firefox extension development with messaging, storage, webRequest, and tab management",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

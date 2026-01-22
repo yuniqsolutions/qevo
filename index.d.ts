@@ -6502,6 +6502,62 @@ export interface EvaluationExceptionInfo {
 	value?: string;
 }
 /**
+ * Callback type for eval results
+ */
+export type EvalCallback<T = any> = (result: T, exceptionInfo: EvaluationExceptionInfo | undefined) => void;
+/**
+ * InspectedWindow API interface with overloaded eval method
+ */
+export interface InspectedWindowAPI {
+	/** Tab ID of the inspected window */
+	readonly tabId: number;
+	/**
+	 * Evaluate a JavaScript expression in the inspected window (callback overload)
+	 *
+	 * @param expression - JavaScript expression to evaluate
+	 * @param callback - Function called when evaluation completes
+	 */
+	eval<T = any>(expression: string, callback: EvalCallback<T>): void;
+	/**
+	 * Evaluate a JavaScript expression in the inspected window (callback with options overload)
+	 *
+	 * @param expression - JavaScript expression to evaluate
+	 * @param options - Evaluation options (mostly Chrome-only)
+	 * @param callback - Function called when evaluation completes
+	 */
+	eval<T = any>(expression: string, options: EvalOptions, callback: EvalCallback<T>): void;
+	/**
+	 * Evaluate a JavaScript expression in the inspected window (Promise overload)
+	 *
+	 * @param expression - JavaScript expression to evaluate
+	 * @param options - Evaluation options (mostly Chrome-only)
+	 * @returns Promise with tuple of [result, exceptionInfo]
+	 */
+	eval<T = any>(expression: string, options?: EvalOptions): Promise<[
+		T | undefined,
+		EvaluationExceptionInfo | undefined
+	]>;
+	/** Reload the inspected page */
+	reload(options?: {
+		ignoreCache?: boolean;
+		userAgent?: string;
+		injectedScript?: string;
+		preprocessorScript?: string;
+	}): Promise<void>;
+	/** Get all resources in the inspected page */
+	getResources(): Promise<Resource[]>;
+	/** Event fired when a resource is added */
+	onResourceAdded: {
+		addListener(callback: (resource: Resource) => void): void;
+		removeListener(callback: (resource: Resource) => void): void;
+	};
+	/** Event fired when a resource's content changes */
+	onResourceContentCommitted: {
+		addListener(callback: (resource: Resource, content: string) => void): void;
+		removeListener(callback: (resource: Resource, content: string) => void): void;
+	};
+}
+/**
  * Resource interface for inspected window
  *
  * **Cross-browser differences:**
@@ -6667,101 +6723,41 @@ declare class QevoDevtools extends QevoLogger {
 	/**
 	 * Inspected Window API
 	 *
-	 * Provides access to the inspected window/tab
+	 * Provides access to the inspected window/tab.
+	 *
+	 * **eval() method - Cross-browser usage:**
+	 *
+	 * The `eval` method supports both callback and Promise patterns:
+	 *
+	 * @example Callback pattern (Chrome-style)
+	 * ```typescript
+	 * devtools.inspectedWindow.eval('document.title', (result, exception) => {
+	 *   if (!exception) {
+	 *     console.log('Page title:', result);
+	 *   }
+	 * });
+	 * ```
+	 *
+	 * @example Callback with options (Chrome-style)
+	 * ```typescript
+	 * devtools.inspectedWindow.eval(
+	 *   'myContentScriptFunction()',
+	 *   { useContentScriptContext: true },
+	 *   (result, exception) => {
+	 *     if (!exception) console.log(result);
+	 *   }
+	 * );
+	 * ```
+	 *
+	 * @example Promise pattern
+	 * ```typescript
+	 * const [result, exception] = await devtools.inspectedWindow.eval('document.title');
+	 * if (!exception) {
+	 *   console.log('Page title:', result);
+	 * }
+	 * ```
 	 */
-	get inspectedWindow(): {
-		/**
-		 * Get the tab ID of the inspected window
-		 */
-		readonly tabId: number;
-		/**
-		 * Evaluate a JavaScript expression in the inspected window
-		 *
-		 * The expression must evaluate to a JSON-compliant object, otherwise an exception is thrown.
-		 * Can report either a DevTools-side error or a JavaScript exception during evaluation.
-		 *
-		 * **Cross-browser differences:**
-		 * - Chrome: Uses callback-based API internally
-		 * - Firefox: Returns Promise directly, but options are mostly unsupported
-		 *
-		 * @param expression - JavaScript expression to evaluate (must return JSON-compliant value)
-		 * @param options - Evaluation options (mostly Chrome-only)
-		 * @returns Promise with tuple of [result, exceptionInfo]. If evaluation succeeded,
-		 *          exceptionInfo is undefined. If failed, result is undefined and exceptionInfo
-		 *          contains error details.
-		 *
-		 * @example Basic evaluation
-		 * ```typescript
-		 * const [result, exception] = await devtools.inspectedWindow.eval('document.title');
-		 * if (!exception) {
-		 *   console.log('Page title:', result);
-		 * } else if (exception.isException) {
-		 *   console.error('JavaScript error:', exception.value);
-		 * } else if (exception.isError) {
-		 *   console.error('DevTools error:', exception.code, exception.description);
-		 * }
-		 * ```
-		 *
-		 * @example Evaluate in content script context (Chrome only)
-		 * ```typescript
-		 * const [result, exception] = await devtools.inspectedWindow.eval(
-		 *   'myContentScriptFunction()',
-		 *   { useContentScriptContext: true }
-		 * );
-		 * ```
-		 *
-		 * @example Evaluate in specific iframe (Chrome only)
-		 * ```typescript
-		 * const [result, exception] = await devtools.inspectedWindow.eval(
-		 *   'document.body.innerHTML',
-		 *   { frameURL: 'https://example.com/iframe.html' }
-		 * );
-		 * ```
-		 */
-		eval<T = any>(expression: string, options?: EvalOptions): Promise<[
-			T | undefined,
-			EvaluationExceptionInfo | undefined
-		]>;
-		/**
-		 * Reload the inspected page
-		 *
-		 * @param options - Reload options
-		 *
-		 * @example
-		 * ```typescript
-		 * await devtools.inspectedWindow.reload({
-		 *   ignoreCache: true,
-		 *   userAgent: 'Custom User Agent'
-		 * });
-		 * ```
-		 */
-		reload(options?: {
-			ignoreCache?: boolean;
-			userAgent?: string;
-			injectedScript?: string;
-			preprocessorScript?: string;
-		}): Promise<void>;
-		/**
-		 * Get all resources in the inspected page
-		 *
-		 * @returns Promise with array of resources
-		 */
-		getResources(): Promise<Resource[]>;
-		/**
-		 * Event fired when a resource is added
-		 */
-		onResourceAdded: {
-			addListener(callback: (resource: Resource) => void): void;
-			removeListener(callback: (resource: Resource) => void): void;
-		};
-		/**
-		 * Event fired when a resource's content changes
-		 */
-		onResourceContentCommitted: {
-			addListener(callback: (resource: Resource, content: string) => void): void;
-			removeListener(callback: (resource: Resource, content: string) => void): void;
-		};
-	};
+	get inspectedWindow(): InspectedWindowAPI;
 	/**
 	 * Panels API
 	 *
