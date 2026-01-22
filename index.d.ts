@@ -5707,6 +5707,3458 @@ declare class QevoRuntime extends QevoLogger {
 	private ensureListenersInitialized;
 }
 /**
+ * WebNavigation event types for the simplified API
+ */
+export type WebNavigationEventType = "BeforeNavigate" | "Committed" | "DOMContentLoaded" | "Completed" | "ErrorOccurred" | "CreatedNavigationTarget" | "ReferenceFragmentUpdated" | "TabReplaced" | "HistoryStateUpdated";
+/**
+ * WebNavigation filter configuration
+ */
+export interface WebNavigationFilter {
+	/** URL patterns to match */
+	url?: Array<{
+		hostContains?: string;
+		hostEquals?: string;
+		hostPrefix?: string;
+		hostSuffix?: string;
+		pathContains?: string;
+		pathEquals?: string;
+		pathPrefix?: string;
+		pathSuffix?: string;
+		queryContains?: string;
+		queryEquals?: string;
+		queryPrefix?: string;
+		querySuffix?: string;
+		urlContains?: string;
+		urlEquals?: string;
+		urlMatches?: string;
+		originAndPathMatches?: string;
+		urlPrefix?: string;
+		urlSuffix?: string;
+		schemes?: string[];
+		ports?: Array<number | [
+			number,
+			number
+		]>;
+	}>;
+}
+/**
+ * WebNavigation details base interface
+ *
+ * **Cross-browser differences:**
+ * - `processId` - Chrome only (deprecated in Firefox)
+ * - `documentId`, `documentLifecycle`, `frameType`, `parentDocumentId` - Chrome MV3 only
+ */
+export interface WebNavigationDetails {
+	/** The ID of the tab in which the navigation is occurring */
+	tabId: number;
+	/** The URL to which the given frame is navigating */
+	url: string;
+	/**
+	 * 0 indicates the navigation happens in the tab content window.
+	 * A positive value indicates navigation in a subframe.
+	 * Frame IDs are unique within a tab.
+	 */
+	frameId: number;
+	/**
+	 * ID of frame that wraps the frame.
+	 * Set to -1 if no parent frame exists.
+	 */
+	parentFrameId: number;
+	/** The time when the navigation occurred, in milliseconds since the epoch */
+	timeStamp: number;
+	/**
+	 * The ID of the process that runs the renderer for this frame.
+	 * @platform Chrome only (deprecated/unsupported in Firefox)
+	 */
+	processId?: number;
+	/**
+	 * A UUID of the document loaded.
+	 * @platform Chrome MV3 only (since Chrome 106)
+	 */
+	documentId?: string;
+	/**
+	 * The lifecycle the document is in.
+	 * @platform Chrome MV3 only (since Chrome 106)
+	 */
+	documentLifecycle?: "prerender" | "active" | "cached" | "pending_deletion";
+	/**
+	 * The type of frame the navigation occurred in.
+	 * @platform Chrome MV3 only (since Chrome 106)
+	 */
+	frameType?: "outermost_frame" | "fenced_frame" | "sub_frame";
+	/**
+	 * A UUID of the parent document owning this frame.
+	 * @platform Chrome MV3 only (since Chrome 106)
+	 */
+	parentDocumentId?: string;
+}
+/**
+ * WebNavigation listener callback type
+ */
+export type WebNavigationListener<T = WebNavigationDetails> = (details: T) => void;
+/**
+ * WebNavigation API interface
+ */
+export interface WebNavigationAPI {
+	on<T = WebNavigationDetails>(eventType: WebNavigationEventType, listener: WebNavigationListener<T>, filter?: WebNavigationFilter): void;
+	off(eventType: WebNavigationEventType, listener: WebNavigationListener): void;
+	clear(eventType: WebNavigationEventType): void;
+	isAvailable(): boolean;
+	getAllFrames(details: {
+		tabId: number;
+	}): Promise<Array<{
+		errorOccurred?: boolean;
+		frameId: number;
+		parentFrameId: number;
+		url: string;
+	}> | null>;
+	getFrame(details: {
+		tabId: number;
+		frameId: number;
+	}): Promise<{
+		errorOccurred?: boolean;
+		url: string;
+		parentFrameId: number;
+	} | null>;
+}
+declare class QevoWebNavigation extends QevoLogger {
+	private listeners;
+	private nativeListeners;
+	constructor(debug?: boolean);
+	/**
+	 * Add a listener for a webNavigation event
+	 *
+	 * @param eventType - Event type to listen for
+	 * @param listener - Callback function receiving navigation details
+	 * @param filter - Optional URL filter patterns
+	 *
+	 * @example Monitor all navigation
+	 * ```typescript
+	 * webNavigation.on('Completed', (details) => {
+	 *   console.log('Page loaded:', details.url);
+	 * });
+	 * ```
+	 *
+	 * @example Filter by URL pattern
+	 * ```typescript
+	 * webNavigation.on('Completed', (details) => {
+	 *   console.log('GitHub page loaded:', details.url);
+	 * }, { url: [{ hostContains: 'github.com' }] });
+	 * ```
+	 */
+	on<T = WebNavigationDetails>(eventType: WebNavigationEventType, listener: WebNavigationListener<T>, filter?: WebNavigationFilter): void;
+	/**
+	 * Remove a webNavigation event listener
+	 *
+	 * @param eventType - Event type the listener was registered for
+	 * @param listener - The listener function to remove
+	 */
+	off(eventType: WebNavigationEventType, listener: WebNavigationListener): void;
+	/**
+	 * Remove all listeners for a specific event type
+	 *
+	 * @param eventType - Event type to clear all listeners for
+	 */
+	clear(eventType: WebNavigationEventType): void;
+	/**
+	 * Check if the webNavigation API is available
+	 *
+	 * @returns `true` if webNavigation API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Get all frames in a tab
+	 *
+	 * @param details - Object containing tabId
+	 * @returns Array of frame details or null
+	 *
+	 * @example
+	 * ```typescript
+	 * const frames = await webNavigation.getAllFrames({ tabId: 123 });
+	 * frames?.forEach(frame => {
+	 *   console.log(`Frame ${frame.frameId}: ${frame.url}`);
+	 * });
+	 * ```
+	 */
+	getAllFrames(details: {
+		tabId: number;
+	}): Promise<Array<{
+		errorOccurred?: boolean;
+		frameId: number;
+		parentFrameId: number;
+		url: string;
+	}> | null>;
+	/**
+	 * Get information about a specific frame
+	 *
+	 * @param details - Object containing tabId and frameId
+	 * @returns Frame details or null
+	 *
+	 * @example
+	 * ```typescript
+	 * const frame = await webNavigation.getFrame({ tabId: 123, frameId: 0 });
+	 * if (frame) {
+	 *   console.log('Main frame URL:', frame.url);
+	 * }
+	 * ```
+	 */
+	getFrame(details: {
+		tabId: number;
+		frameId: number;
+	}): Promise<{
+		errorOccurred?: boolean;
+		url: string;
+		parentFrameId: number;
+	} | null>;
+	/**
+	 * Get the full WebNavigation API interface
+	 */
+	get api(): WebNavigationAPI;
+}
+/**
+ * Rule action types
+ */
+export type RuleActionType = "block" | "redirect" | "allow" | "upgradeScheme" | "modifyHeaders" | "allowAllRequests";
+/**
+ * Resource types for matching
+ *
+ * How the requested resource will be used. Comparable to `webRequest.ResourceType`.
+ *
+ * **Cross-browser differences:**
+ * - `object_subrequest` - Firefox only (unsupported in type definition)
+ * - `webtransport`, `webbundle` - Chrome only
+ * - `xslt`, `beacon`, `xml_dtd`, `imageset`, `web_manifest`, `speculative`, `json` - Firefox only
+ */
+export type ResourceType = "main_frame" | "sub_frame" | "stylesheet" | "script" | "image" | "font" | "object" | "xmlhttprequest" | "ping" | "csp_report" | "media" | "websocket" | "webtransport" | "webbundle" | "other" | "xslt" | "beacon" | "xml_dtd" | "imageset" | "web_manifest" | "speculative" | "json";
+/**
+ * Domain type for matching
+ */
+export type DomainType = "firstParty" | "thirdParty";
+/**
+ * Header operation type
+ */
+export type HeaderOperation = "append" | "set" | "remove";
+/**
+ * Header modification info
+ */
+export interface ModifyHeaderInfo {
+	/** The header name */
+	header: string;
+	/** The operation to perform */
+	operation: HeaderOperation;
+	/** The value (required for 'append' and 'set') */
+	value?: string;
+}
+/**
+ * Rule action configuration
+ */
+export interface RuleAction {
+	/** The type of action */
+	type: RuleActionType;
+	/** Redirect configuration (for 'redirect' type) */
+	redirect?: {
+		/** URL to redirect to */
+		url?: string;
+		/** Extension path to redirect to */
+		extensionPath?: string;
+		/** Transform for the URL */
+		transform?: {
+			scheme?: string;
+			host?: string;
+			port?: string;
+			path?: string;
+			query?: string;
+			queryTransform?: {
+				removeParams?: string[];
+				addOrReplaceParams?: Array<{
+					key: string;
+					value: string;
+					replaceOnly?: boolean;
+				}>;
+			};
+			fragment?: string;
+			username?: string;
+			password?: string;
+		};
+		/** Regex substitution */
+		regexSubstitution?: string;
+	};
+	/** Request headers to modify (for 'modifyHeaders' type) */
+	requestHeaders?: ModifyHeaderInfo[];
+	/** Response headers to modify (for 'modifyHeaders' type) */
+	responseHeaders?: ModifyHeaderInfo[];
+}
+/**
+ * Rule condition configuration
+ */
+export interface RuleCondition {
+	/** URL filter pattern */
+	urlFilter?: string;
+	/** Regular expression filter */
+	regexFilter?: string;
+	/** Is URL filter case sensitive */
+	isUrlFilterCaseSensitive?: boolean;
+	/** Domains to include (initiator) */
+	initiatorDomains?: string[];
+	/** Domains to exclude (initiator) */
+	excludedInitiatorDomains?: string[];
+	/** Request domains to include */
+	requestDomains?: string[];
+	/** Request domains to exclude */
+	excludedRequestDomains?: string[];
+	/** Resource types to match */
+	resourceTypes?: ResourceType[];
+	/** Resource types to exclude */
+	excludedResourceTypes?: ResourceType[];
+	/** Request methods to match */
+	requestMethods?: string[];
+	/** Request methods to exclude */
+	excludedRequestMethods?: string[];
+	/** Domain type */
+	domainType?: DomainType;
+	/** Tab IDs to match */
+	tabIds?: number[];
+	/** Tab IDs to exclude */
+	excludedTabIds?: number[];
+}
+/**
+ * A declarative net request rule
+ *
+ * Defines a rule that declaratively modifies network requests.
+ */
+export interface Rule {
+	/**
+	 * An ID which uniquely identifies a rule.
+	 * Mandatory and should be >= 1.
+	 */
+	id: number;
+	/**
+	 * Rule priority. Defaults to 1. When specified, should be >= 1.
+	 * Higher priority rules take precedence over lower priority rules.
+	 */
+	priority?: number;
+	/** The action to take if this rule is matched */
+	action: RuleAction;
+	/** The condition under which this rule is triggered */
+	condition: RuleCondition;
+}
+/**
+ * Options for updating rules
+ */
+export interface UpdateRuleOptions {
+	/** Rules to add */
+	addRules?: Rule[];
+	/** Rule IDs to remove */
+	removeRuleIds?: number[];
+}
+/**
+ * Matched rule info
+ */
+export interface MatchedRule {
+	/** The rule that matched */
+	ruleId: number;
+	/** The ruleset ID (for static rules) */
+	rulesetId: string;
+}
+/**
+ * Matched rules info for a request
+ */
+export interface MatchedRulesInfo {
+	/** The rules that matched */
+	rulesMatchedInfo: Array<{
+		rule: MatchedRule;
+		timeStamp: number;
+		tabId: number;
+	}>;
+}
+/**
+ * Request details for testing
+ */
+export interface TestMatchRequestDetails {
+	/** The URL to test */
+	url: string;
+	/** The initiator URL */
+	initiator?: string;
+	/** The request method */
+	method?: string;
+	/** The resource type */
+	type?: ResourceType;
+	/** The tab ID */
+	tabId?: number;
+}
+/**
+ * DeclarativeNetRequest event types
+ */
+export type DeclarativeNetRequestEventType = "RuleMatchedDebug";
+/**
+ * DeclarativeNetRequest listener callback type
+ */
+export type DeclarativeNetRequestListener = (info: {
+	request: {
+		url: string;
+		initiator?: string;
+		method: string;
+		type: ResourceType;
+		tabId: number;
+		frameId: number;
+	};
+	rule: MatchedRule;
+}) => void;
+/**
+ * DeclarativeNetRequest API interface
+ */
+export interface DeclarativeNetRequestAPI {
+	updateDynamicRules(options: UpdateRuleOptions): Promise<void>;
+	getDynamicRules(): Promise<Rule[]>;
+	updateSessionRules(options: UpdateRuleOptions): Promise<void>;
+	getSessionRules(): Promise<Rule[]>;
+	updateEnabledRulesets(options: {
+		enableRulesetIds?: string[];
+		disableRulesetIds?: string[];
+	}): Promise<void>;
+	getEnabledRulesets(): Promise<string[]>;
+	getAvailableStaticRuleCount(): Promise<number>;
+	getMatchedRules(filter?: {
+		tabId?: number;
+		minTimeStamp?: number;
+	}): Promise<MatchedRulesInfo>;
+	testMatchOutcome(request: TestMatchRequestDetails): Promise<{
+		matchedRules: MatchedRule[];
+	}>;
+	isRegexSupported(options: {
+		regex: string;
+		isCaseSensitive?: boolean;
+	}): Promise<{
+		isSupported: boolean;
+		reason?: string;
+	}>;
+	on(eventType: DeclarativeNetRequestEventType, listener: DeclarativeNetRequestListener): void;
+	off(eventType: DeclarativeNetRequestEventType, listener: DeclarativeNetRequestListener): void;
+	isAvailable(): boolean;
+}
+declare class QevoDeclarativeNetRequest extends QevoLogger {
+	private listeners;
+	constructor(debug?: boolean);
+	/**
+	 * Ruleset ID for the dynamic rules added by the extension.
+	 * Value: "_dynamic"
+	 */
+	get DYNAMIC_RULESET_ID(): string;
+	/**
+	 * Ruleset ID for the session-scoped rules added by the extension.
+	 * Value: "_session"
+	 */
+	get SESSION_RULESET_ID(): string;
+	/**
+	 * The minimum number of static rules guaranteed to an extension across
+	 * its enabled static rulesets.
+	 */
+	get GUARANTEED_MINIMUM_STATIC_RULES(): number;
+	/**
+	 * The maximum number of static Rulesets an extension can specify as part of
+	 * the rule_resources manifest key.
+	 */
+	get MAX_NUMBER_OF_STATIC_RULESETS(): number;
+	/**
+	 * The maximum number of static Rulesets an extension can enable at any one time.
+	 */
+	get MAX_NUMBER_OF_ENABLED_STATIC_RULESETS(): number;
+	/**
+	 * The maximum number of dynamic rules an extension can add.
+	 */
+	get MAX_NUMBER_OF_DYNAMIC_RULES(): number;
+	/**
+	 * The maximum number of session rules an extension can add.
+	 */
+	get MAX_NUMBER_OF_SESSION_RULES(): number;
+	/**
+	 * The maximum number of regular expression rules that an extension can add.
+	 * This limit is evaluated separately for the set of session rules, dynamic rules,
+	 * and those specified in the rule_resources file.
+	 */
+	get MAX_NUMBER_OF_REGEX_RULES(): number;
+	/**
+	 * The maximum number of static rules that can be disabled on each static ruleset.
+	 */
+	get MAX_NUMBER_OF_DISABLED_STATIC_RULES(): number;
+	/**
+	 * Update dynamic rules
+	 *
+	 * Dynamic rules persist across browser sessions and can be modified at runtime.
+	 *
+	 * @param options - Rules to add and/or rule IDs to remove
+	 *
+	 * @example Add a blocking rule
+	 * ```typescript
+	 * await declarativeNetRequest.updateDynamicRules({
+	 *   addRules: [{
+	 *     id: 1,
+	 *     priority: 1,
+	 *     action: { type: 'block' },
+	 *     condition: { urlFilter: '*://tracking.example.com/*' }
+	 *   }]
+	 * });
+	 * ```
+	 *
+	 * @example Remove rules
+	 * ```typescript
+	 * await declarativeNetRequest.updateDynamicRules({
+	 *   removeRuleIds: [1, 2, 3]
+	 * });
+	 * ```
+	 *
+	 * @example Add redirect rule
+	 * ```typescript
+	 * await declarativeNetRequest.updateDynamicRules({
+	 *   addRules: [{
+	 *     id: 2,
+	 *     priority: 1,
+	 *     action: {
+	 *       type: 'redirect',
+	 *       redirect: { url: 'https://new-api.example.com/v2' }
+	 *     },
+	 *     condition: { urlFilter: '*://old-api.example.com/*' }
+	 *   }]
+	 * });
+	 * ```
+	 */
+	updateDynamicRules(options: UpdateRuleOptions): Promise<void>;
+	/**
+	 * Get all dynamic rules
+	 *
+	 * @returns Array of dynamic rules
+	 *
+	 * @example
+	 * ```typescript
+	 * const rules = await declarativeNetRequest.getDynamicRules();
+	 * console.log(`${rules.length} dynamic rules active`);
+	 * ```
+	 */
+	getDynamicRules(): Promise<Rule[]>;
+	/**
+	 * Update session rules
+	 *
+	 * Session rules are cleared when the browser session ends.
+	 *
+	 * @param options - Rules to add and/or rule IDs to remove
+	 *
+	 * @example
+	 * ```typescript
+	 * await declarativeNetRequest.updateSessionRules({
+	 *   addRules: [{
+	 *     id: 100,
+	 *     priority: 1,
+	 *     action: { type: 'block' },
+	 *     condition: { urlFilter: '*://temporary-block.com/*' }
+	 *   }]
+	 * });
+	 * ```
+	 */
+	updateSessionRules(options: UpdateRuleOptions): Promise<void>;
+	/**
+	 * Get all session rules
+	 *
+	 * @returns Array of session rules
+	 */
+	getSessionRules(): Promise<Rule[]>;
+	/**
+	 * Enable or disable static rulesets
+	 *
+	 * Static rulesets are defined in the manifest.json file.
+	 *
+	 * @param options - Ruleset IDs to enable and/or disable
+	 *
+	 * @example
+	 * ```typescript
+	 * await declarativeNetRequest.updateEnabledRulesets({
+	 *   enableRulesetIds: ['blocking_rules'],
+	 *   disableRulesetIds: ['redirect_rules']
+	 * });
+	 * ```
+	 */
+	updateEnabledRulesets(options: {
+		enableRulesetIds?: string[];
+		disableRulesetIds?: string[];
+	}): Promise<void>;
+	/**
+	 * Get enabled static rulesets
+	 *
+	 * @returns Array of enabled ruleset IDs
+	 */
+	getEnabledRulesets(): Promise<string[]>;
+	/**
+	 * Get the number of available static rule slots
+	 *
+	 * Returns the remaining number of static rules an extension can enable
+	 * before the global limit is reached.
+	 *
+	 * @returns Promise resolving to number of available rule slots
+	 *
+	 * @example
+	 * ```typescript
+	 * const available = await declarativeNetRequest.getAvailableStaticRuleCount();
+	 * console.log(`Can add ${available} more static rules`);
+	 * ```
+	 */
+	getAvailableStaticRuleCount(): Promise<number>;
+	/**
+	 * Update enabled/disabled state of individual static rules
+	 *
+	 * Modified individual static rules enabled/disabled state. Changes to rules
+	 * belonging to a disabled ruleset will take effect when the ruleset becomes enabled.
+	 *
+	 * @param options - Options specifying which rules to enable/disable
+	 * @param options.rulesetId - The ID of the static ruleset
+	 * @param options.disableRuleIds - IDs of rules to disable
+	 * @param options.enableRuleIds - IDs of rules to enable
+	 *
+	 * @example
+	 * ```typescript
+	 * await declarativeNetRequest.updateStaticRules({
+	 *   rulesetId: 'my_ruleset',
+	 *   disableRuleIds: [1, 2],
+	 *   enableRuleIds: [3, 4]
+	 * });
+	 * ```
+	 */
+	updateStaticRules(options: {
+		rulesetId: string;
+		disableRuleIds?: number[];
+		enableRuleIds?: number[];
+	}): Promise<void>;
+	/**
+	 * Get list of disabled static rule IDs from a static ruleset
+	 *
+	 * Returns the list of individual disabled static rules from a given static ruleset ID.
+	 *
+	 * @param options - Options specifying which ruleset to query
+	 * @param options.rulesetId - The ID of the static ruleset
+	 * @returns Promise resolving to array of disabled rule IDs
+	 *
+	 * @example
+	 * ```typescript
+	 * const disabledIds = await declarativeNetRequest.getDisabledRuleIds({
+	 *   rulesetId: 'my_ruleset'
+	 * });
+	 * console.log('Disabled rules:', disabledIds);
+	 * ```
+	 */
+	getDisabledRuleIds(options?: {
+		rulesetId: string;
+	}): Promise<number[]>;
+	/**
+	 * Get rules that have matched requests (Chrome only)
+	 *
+	 * @param filter - Optional filter for tab ID and/or minimum timestamp
+	 * @returns Matched rules info
+	 *
+	 * @example
+	 * ```typescript
+	 * const matched = await declarativeNetRequest.getMatchedRules({ tabId: 123 });
+	 * matched.rulesMatchedInfo.forEach(info => {
+	 *   console.log(`Rule ${info.rule.ruleId} matched at ${info.timeStamp}`);
+	 * });
+	 * ```
+	 */
+	getMatchedRules(filter?: {
+		tabId?: number;
+		minTimeStamp?: number;
+	}): Promise<MatchedRulesInfo>;
+	/**
+	 * Test which rules would match a hypothetical request
+	 *
+	 * @param request - Request details to test
+	 * @returns Matched rules
+	 *
+	 * @example
+	 * ```typescript
+	 * const result = await declarativeNetRequest.testMatchOutcome({
+	 *   url: 'https://tracking.example.com/pixel.gif',
+	 *   type: 'image'
+	 * });
+	 * if (result.matchedRules.length > 0) {
+	 *   console.log('Request would be blocked/modified');
+	 * }
+	 * ```
+	 */
+	testMatchOutcome(request: TestMatchRequestDetails): Promise<{
+		matchedRules: MatchedRule[];
+	}>;
+	/**
+	 * Check if a regex pattern is supported
+	 *
+	 * @param options - Regex pattern and case sensitivity
+	 * @returns Whether the regex is supported and reason if not
+	 *
+	 * @example
+	 * ```typescript
+	 * const result = await declarativeNetRequest.isRegexSupported({
+	 *   regex: '.*\\.example\\.com/.*',
+	 *   isCaseSensitive: false
+	 * });
+	 * if (!result.isSupported) {
+	 *   console.log('Regex not supported:', result.reason);
+	 * }
+	 * ```
+	 */
+	isRegexSupported(options: {
+		regex: string;
+		isCaseSensitive?: boolean;
+	}): Promise<{
+		isSupported: boolean;
+		reason?: string;
+	}>;
+	/**
+	 * Add a listener for rule match events (debug only)
+	 *
+	 * @param eventType - Event type ('RuleMatchedDebug')
+	 * @param listener - Callback function
+	 *
+	 * @example
+	 * ```typescript
+	 * declarativeNetRequest.on('RuleMatchedDebug', (info) => {
+	 *   console.log(`Rule ${info.rule.ruleId} matched request to ${info.request.url}`);
+	 * });
+	 * ```
+	 */
+	on(eventType: DeclarativeNetRequestEventType, listener: DeclarativeNetRequestListener): void;
+	/**
+	 * Remove a rule match event listener
+	 *
+	 * @param eventType - Event type ('RuleMatchedDebug')
+	 * @param listener - The listener to remove
+	 */
+	off(eventType: DeclarativeNetRequestEventType, listener: DeclarativeNetRequestListener): void;
+	/**
+	 * Check if the declarativeNetRequest API is available
+	 *
+	 * @returns `true` if API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Get the full DeclarativeNetRequest API interface
+	 */
+	get api(): DeclarativeNetRequestAPI;
+}
+/**
+ * Evaluation options for inspectedWindow.eval
+ *
+ * **Cross-browser differences:**
+ * - `frameURL` - Chrome only (unsupported in Firefox)
+ * - `useContentScriptContext` - Chrome only (unsupported in Firefox)
+ * - `scriptExecutionContext` - Chrome 107+ only
+ */
+export interface EvalOptions {
+	/**
+	 * If specified, the expression is evaluated on the iframe whose URL matches.
+	 * By default, the expression is evaluated in the top frame.
+	 * @platform Chrome only (unsupported in Firefox)
+	 */
+	frameURL?: string;
+	/**
+	 * Evaluate in the context of the content script of the calling extension,
+	 * if already injected. If not, returns E_NOTFOUND error.
+	 * @platform Chrome only (unsupported in Firefox)
+	 */
+	useContentScriptContext?: boolean;
+	/**
+	 * Evaluate in the context of a content script of an extension that matches
+	 * the specified origin. Overrides useContentScriptContext if both specified.
+	 * @platform Chrome 107+ only
+	 */
+	scriptExecutionContext?: string;
+}
+/**
+ * Exception info returned when eval fails
+ *
+ * Represents either a DevTools-side error or a JavaScript exception.
+ */
+export interface EvaluationExceptionInfo {
+	/**
+	 * True if the error occurred on the DevTools side before evaluation.
+	 * Check this first to determine error type.
+	 */
+	isError: boolean;
+	/**
+	 * Error code when isError is true (e.g., "E_NOTFOUND", "E_FAILED")
+	 */
+	code: string;
+	/**
+	 * Human-readable error description
+	 */
+	description: string;
+	/**
+	 * Additional values that may be substituted into the description
+	 */
+	details: any[];
+	/**
+	 * True if the evaluated code threw an unhandled exception.
+	 * When true, check the `value` property for the exception.
+	 */
+	isException?: boolean;
+	/**
+	 * String value of the thrown exception when isException is true
+	 */
+	value?: string;
+}
+/**
+ * Resource interface for inspected window
+ *
+ * **Cross-browser differences:**
+ * - `getContent` - Chrome uses callback, Firefox returns Promise (deprecated in Firefox)
+ * - `setContent` - Chrome uses callback, Firefox returns Promise (deprecated in Firefox)
+ */
+export interface Resource {
+	/** The URL of the resource */
+	url: string;
+	/**
+	 * Get the content of the resource
+	 * @param callback - Receives content and encoding (base64 or empty string)
+	 * @deprecated Unsupported in Firefox
+	 */
+	getContent(callback: (content: string, encoding: string) => void): void;
+	/**
+	 * Set the content of the resource
+	 * @param content - New content (only text resources supported)
+	 * @param commit - True if this is the final edit, false for intermediate changes
+	 * @param callback - Optional callback receiving error info if failed
+	 * @deprecated Unsupported in Firefox
+	 */
+	setContent(content: string, commit: boolean, callback?: (error?: {
+		code: string;
+		description: string;
+		details: string[];
+	}) => void): void;
+}
+/**
+ * Panel interface
+ */
+export interface ExtensionPanel {
+	/** Create a button in the panel's sidebar */
+	createStatusBarButton(iconPath: string, tooltipText: string, disabled: boolean): void;
+	/** Fired when the panel is shown */
+	onShown: {
+		addListener(callback: (window: Window) => void): void;
+		removeListener(callback: (window: Window) => void): void;
+	};
+	/** Fired when the panel is hidden */
+	onHidden: {
+		addListener(callback: () => void): void;
+		removeListener(callback: () => void): void;
+	};
+}
+/**
+ * Sidebar pane interface
+ */
+export interface ExtensionSidebarPane {
+	/** Set the sidebar content to an HTML page */
+	setPage(path: string): void;
+	/** Set the sidebar content to a JSON object */
+	setObject(jsonObject: any, rootTitle?: string, callback?: () => void): void;
+	/** Set the sidebar content to an expression result */
+	setExpression(expression: string, rootTitle?: string, callback?: () => void): void;
+	/** Fired when the sidebar is shown */
+	onShown: {
+		addListener(callback: (window: Window) => void): void;
+		removeListener(callback: (window: Window) => void): void;
+	};
+	/** Fired when the sidebar is hidden */
+	onHidden: {
+		addListener(callback: () => void): void;
+		removeListener(callback: () => void): void;
+	};
+}
+/**
+ * Network request interface
+ */
+export interface NetworkRequest {
+	/** Get the HAR entry for this request */
+	getContent(callback: (content: string, encoding: string) => void): void;
+}
+/**
+ * HAR Log interface
+ */
+export interface HARLog {
+	/** HAR version */
+	version: string;
+	/** Creator info */
+	creator: {
+		name: string;
+		version: string;
+	};
+	/** Browser info */
+	browser?: {
+		name: string;
+		version: string;
+	};
+	/** Array of HAR entries */
+	entries: HAREntry[];
+}
+/**
+ * HAR Entry interface
+ */
+export interface HAREntry {
+	/** Page reference */
+	pageref?: string;
+	/** Start time */
+	startedDateTime: string;
+	/** Time in ms */
+	time: number;
+	/** Request info */
+	request: {
+		method: string;
+		url: string;
+		httpVersion: string;
+		cookies: any[];
+		headers: Array<{
+			name: string;
+			value: string;
+		}>;
+		queryString: any[];
+		postData?: {
+			mimeType: string;
+			text: string;
+		};
+		headersSize: number;
+		bodySize: number;
+	};
+	/** Response info */
+	response: {
+		status: number;
+		statusText: string;
+		httpVersion: string;
+		cookies: any[];
+		headers: Array<{
+			name: string;
+			value: string;
+		}>;
+		content: {
+			size: number;
+			mimeType: string;
+			text?: string;
+		};
+		redirectURL: string;
+		headersSize: number;
+		bodySize: number;
+	};
+	/** Cache info */
+	cache: {};
+	/** Timing info */
+	timings: {
+		blocked?: number;
+		dns?: number;
+		connect?: number;
+		send: number;
+		wait: number;
+		receive: number;
+		ssl?: number;
+	};
+	/** Server IP address */
+	serverIPAddress?: string;
+	/** Connection ID */
+	connection?: string;
+}
+declare class QevoDevtools extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the devtools API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Inspected Window API
+	 *
+	 * Provides access to the inspected window/tab
+	 */
+	get inspectedWindow(): {
+		/**
+		 * Get the tab ID of the inspected window
+		 */
+		readonly tabId: number;
+		/**
+		 * Evaluate a JavaScript expression in the inspected window
+		 *
+		 * The expression must evaluate to a JSON-compliant object, otherwise an exception is thrown.
+		 * Can report either a DevTools-side error or a JavaScript exception during evaluation.
+		 *
+		 * **Cross-browser differences:**
+		 * - Chrome: Uses callback-based API internally
+		 * - Firefox: Returns Promise directly, but options are mostly unsupported
+		 *
+		 * @param expression - JavaScript expression to evaluate (must return JSON-compliant value)
+		 * @param options - Evaluation options (mostly Chrome-only)
+		 * @returns Promise with tuple of [result, exceptionInfo]. If evaluation succeeded,
+		 *          exceptionInfo is undefined. If failed, result is undefined and exceptionInfo
+		 *          contains error details.
+		 *
+		 * @example Basic evaluation
+		 * ```typescript
+		 * const [result, exception] = await devtools.inspectedWindow.eval('document.title');
+		 * if (!exception) {
+		 *   console.log('Page title:', result);
+		 * } else if (exception.isException) {
+		 *   console.error('JavaScript error:', exception.value);
+		 * } else if (exception.isError) {
+		 *   console.error('DevTools error:', exception.code, exception.description);
+		 * }
+		 * ```
+		 *
+		 * @example Evaluate in content script context (Chrome only)
+		 * ```typescript
+		 * const [result, exception] = await devtools.inspectedWindow.eval(
+		 *   'myContentScriptFunction()',
+		 *   { useContentScriptContext: true }
+		 * );
+		 * ```
+		 *
+		 * @example Evaluate in specific iframe (Chrome only)
+		 * ```typescript
+		 * const [result, exception] = await devtools.inspectedWindow.eval(
+		 *   'document.body.innerHTML',
+		 *   { frameURL: 'https://example.com/iframe.html' }
+		 * );
+		 * ```
+		 */
+		eval<T = any>(expression: string, options?: EvalOptions): Promise<[
+			T | undefined,
+			EvaluationExceptionInfo | undefined
+		]>;
+		/**
+		 * Reload the inspected page
+		 *
+		 * @param options - Reload options
+		 *
+		 * @example
+		 * ```typescript
+		 * await devtools.inspectedWindow.reload({
+		 *   ignoreCache: true,
+		 *   userAgent: 'Custom User Agent'
+		 * });
+		 * ```
+		 */
+		reload(options?: {
+			ignoreCache?: boolean;
+			userAgent?: string;
+			injectedScript?: string;
+			preprocessorScript?: string;
+		}): Promise<void>;
+		/**
+		 * Get all resources in the inspected page
+		 *
+		 * @returns Promise with array of resources
+		 */
+		getResources(): Promise<Resource[]>;
+		/**
+		 * Event fired when a resource is added
+		 */
+		onResourceAdded: {
+			addListener(callback: (resource: Resource) => void): void;
+			removeListener(callback: (resource: Resource) => void): void;
+		};
+		/**
+		 * Event fired when a resource's content changes
+		 */
+		onResourceContentCommitted: {
+			addListener(callback: (resource: Resource, content: string) => void): void;
+			removeListener(callback: (resource: Resource, content: string) => void): void;
+		};
+	};
+	/**
+	 * Panels API
+	 *
+	 * Provides access to create and manage DevTools panels
+	 */
+	get panels(): {
+		/**
+		 * Get the name of the current theme
+		 */
+		readonly themeName: string;
+		/**
+		 * Create a new DevTools panel
+		 *
+		 * @param title - Panel title
+		 * @param iconPath - Path to the panel icon
+		 * @param pagePath - Path to the panel HTML page
+		 * @returns Promise with the created panel
+		 *
+		 * @example
+		 * ```typescript
+		 * const panel = await devtools.panels.create(
+		 *   'My Extension',
+		 *   'icons/panel-icon.png',
+		 *   'panel.html'
+		 * );
+		 * panel.onShown.addListener((window) => {
+		 *   console.log('Panel shown');
+		 * });
+		 * ```
+		 */
+		create(title: string, iconPath: string, pagePath: string): Promise<ExtensionPanel>;
+		/**
+		 * Set the sidebar pane's height
+		 *
+		 * @param height - Height in CSS units
+		 */
+		setOpenResourceHandler(callback: ((resource: Resource, lineNumber: number) => void) | null): void;
+		/**
+		 * Open a resource in the Sources panel
+		 *
+		 * @param url - URL of the resource
+		 * @param lineNumber - Line number to navigate to
+		 */
+		openResource(url: string, lineNumber: number, callback?: () => void): void;
+		/**
+		 * Elements panel reference
+		 */
+		readonly elements: {
+			/**
+			 * Create a sidebar pane in the Elements panel
+			 *
+			 * @param title - Sidebar pane title
+			 * @returns Promise with the created sidebar pane
+			 */
+			createSidebarPane(title: string): Promise<ExtensionSidebarPane>;
+			/**
+			 * Event fired when the selected element changes
+			 */
+			onSelectionChanged: {
+				addListener(callback: () => void): void;
+				removeListener(callback: () => void): void;
+			};
+		};
+		/**
+		 * Sources panel reference
+		 */
+		readonly sources: {
+			/**
+			 * Create a sidebar pane in the Sources panel
+			 */
+			createSidebarPane(title: string): Promise<ExtensionSidebarPane>;
+		};
+		/**
+		 * Event fired when the theme changes
+		 */
+		onThemeChanged: {
+			addListener(callback: (themeName: string) => void): void;
+			removeListener(callback: (themeName: string) => void): void;
+		};
+	};
+	/**
+	 * Network API
+	 *
+	 * Provides access to network information in DevTools
+	 */
+	get network(): {
+		/**
+		 * Get the HAR log for the inspected page
+		 *
+		 * @returns Promise with HAR log
+		 *
+		 * @example
+		 * ```typescript
+		 * const har = await devtools.network.getHAR();
+		 * console.log(`${har.entries.length} requests recorded`);
+		 * ```
+		 */
+		getHAR(): Promise<HARLog>;
+		/**
+		 * Event fired when a network request is finished
+		 */
+		onRequestFinished: {
+			addListener(callback: (request: NetworkRequest) => void): void;
+			removeListener(callback: (request: NetworkRequest) => void): void;
+		};
+		/**
+		 * Event fired when the user navigates away
+		 */
+		onNavigated: {
+			addListener(callback: (url: string) => void): void;
+			removeListener(callback: (url: string) => void): void;
+		};
+	};
+}
+/**
+ * Extension/app type
+ *
+ * **Cross-browser differences:**
+ * - Chrome: `'extension' | 'hosted_app' | 'packaged_app' | 'legacy_packaged_app' | 'theme' | 'login_screen_extension'`
+ * - Firefox: `'extension' | 'theme'` only
+ */
+export type ExtensionType = "extension" | "hosted_app" | "packaged_app" | "legacy_packaged_app" | "theme" | "login_screen_extension";
+/**
+ * Extension launch type
+ */
+export type LaunchType = "OPEN_AS_REGULAR_TAB" | "OPEN_AS_PINNED_TAB" | "OPEN_AS_WINDOW" | "OPEN_FULL_SCREEN";
+/**
+ * Extension install type
+ */
+export type InstallType = "admin" | "development" | "normal" | "sideload" | "other";
+/**
+ * Disable reason
+ */
+export type DisableReason = "unknown" | "permissions_increase";
+/**
+ * Extension info interface
+ *
+ * **Cross-browser differences:**
+ * - `isApp` - Chrome only (deprecated since Chrome 33)
+ * - `offlineEnabled` - Chrome only
+ * - `hostPermissions` - Chrome only (Firefox uses `permissions` array)
+ * - `launchType`, `availableLaunchTypes`, `appLaunchUrl` - Chrome only (for apps)
+ * - `mayEnable` - Chrome only (since Chrome 62)
+ */
+export interface ExtensionInfo {
+	/** The extension's unique identifier */
+	id: string;
+	/** The name of the extension */
+	name: string;
+	/** A short version of the name */
+	shortName?: string;
+	/** The description of the extension */
+	description: string;
+	/** The version of the extension */
+	version: string;
+	/** The version name (display version) */
+	versionName?: string;
+	/** Whether the extension may be disabled/uninstalled by user */
+	mayDisable: boolean;
+	/**
+	 * Whether the extension may be enabled by user.
+	 * Only returned for extensions which are not enabled.
+	 * @platform Chrome only (since Chrome 62)
+	 */
+	mayEnable?: boolean;
+	/** Whether the extension is currently enabled */
+	enabled: boolean;
+	/** The reason the extension is disabled */
+	disabledReason?: DisableReason;
+	/**
+	 * True if this is an app
+	 * @deprecated since Chrome 33. Use `type` instead.
+	 * @platform Chrome only
+	 */
+	isApp?: boolean;
+	/** The type of the extension */
+	type: ExtensionType;
+	/**
+	 * The URL of the app's launch page (for apps)
+	 * @platform Chrome only
+	 */
+	appLaunchUrl?: string;
+	/** The URL of the homepage */
+	homepageUrl?: string;
+	/** The URL to the item's update page */
+	updateUrl?: string;
+	/**
+	 * Whether the extension declares offline support
+	 * @platform Chrome only
+	 */
+	offlineEnabled?: boolean;
+	/** The URL of the options page */
+	optionsUrl: string;
+	/** Array of icon information */
+	icons?: Array<{
+		size: number;
+		url: string;
+	}>;
+	/**
+	 * The API permissions the extension has.
+	 * In Firefox, this includes all permissions.
+	 * In Chrome, host permissions are in `hostPermissions`.
+	 */
+	permissions?: string[];
+	/**
+	 * The host permissions the extension has
+	 * @platform Chrome only (Firefox includes these in `permissions`)
+	 */
+	hostPermissions?: string[];
+	/** How the extension was installed */
+	installType: InstallType;
+	/**
+	 * The launch type for apps
+	 * @platform Chrome only
+	 */
+	launchType?: LaunchType;
+	/**
+	 * Available launch types for apps
+	 * @platform Chrome only
+	 */
+	availableLaunchTypes?: LaunchType[];
+}
+/**
+ * Uninstall options
+ */
+export interface UninstallOptions {
+	/** Whether to show the uninstall confirmation dialog */
+	showConfirmDialog?: boolean;
+}
+/**
+ * Management listener callback type
+ */
+export type ManagementListener = (info: ExtensionInfo) => void;
+export type ManagementUninstalledListener = (id: string) => void;
+declare class QevoManagement extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the management API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Get a list of all installed extensions and apps
+	 *
+	 * @returns Promise with array of extension info
+	 *
+	 * @example
+	 * ```typescript
+	 * const extensions = await management.getAll();
+	 * extensions.forEach(ext => {
+	 *   console.log(`${ext.name} (${ext.version}) - ${ext.enabled ? 'enabled' : 'disabled'}`);
+	 * });
+	 * ```
+	 */
+	getAll(): Promise<ExtensionInfo[]>;
+	/**
+	 * Get information about an extension or app
+	 *
+	 * @param id - The extension ID
+	 * @returns Promise with extension info
+	 *
+	 * @example
+	 * ```typescript
+	 * const ext = await management.get('abcdefghijklmnop');
+	 * console.log(`${ext.name} is ${ext.enabled ? 'enabled' : 'disabled'}`);
+	 * ```
+	 */
+	get(id: string): Promise<ExtensionInfo>;
+	/**
+	 * Get information about the calling extension
+	 *
+	 * @returns Promise with self extension info
+	 *
+	 * @example
+	 * ```typescript
+	 * const self = await management.getSelf();
+	 * console.log(`Running ${self.name} v${self.version}`);
+	 * ```
+	 */
+	getSelf(): Promise<ExtensionInfo>;
+	/**
+	 * Get a list of permission warnings for an extension
+	 *
+	 * Returns permission warning strings that would be displayed to the user
+	 * if they were to install/update the extension.
+	 *
+	 * **Note:** This method is only available in Chrome. Firefox does not support
+	 * permission warnings API - returns empty array in Firefox.
+	 *
+	 * @param id - The extension ID from `ExtensionInfo.id`
+	 * @returns Promise resolving to array of permission warning strings.
+	 *          Returns empty array in Firefox.
+	 *
+	 * @platform Chrome only
+	 *
+	 * @example
+	 * ```typescript
+	 * const warnings = await management.getPermissionWarningsById('abcdef...');
+	 * if (warnings.length > 0) {
+	 *   console.log('Permission warnings:', warnings);
+	 * }
+	 * ```
+	 */
+	getPermissionWarningsById(id: string): Promise<string[]>;
+	/**
+	 * Enable or disable an extension
+	 *
+	 * @param id - The extension ID
+	 * @param enabled - Whether to enable (true) or disable (false)
+	 *
+	 * @example
+	 * ```typescript
+	 * // Disable an extension
+	 * await management.setEnabled('abcdefghijklmnop', false);
+	 *
+	 * // Enable it again
+	 * await management.setEnabled('abcdefghijklmnop', true);
+	 * ```
+	 */
+	setEnabled(id: string, enabled: boolean): Promise<void>;
+	/**
+	 * Uninstall an extension (Chrome only)
+	 *
+	 * **Note:** This method is only available in Chrome. Firefox does not support
+	 * uninstalling other extensions - use `uninstallSelf()` instead.
+	 *
+	 * @param id - The extension ID to uninstall
+	 * @param options - Uninstall options (Chrome only)
+	 * @param options.showConfirmDialog - Whether to show a confirmation dialog
+	 * @throws Error if called in Firefox
+	 *
+	 * @example
+	 * ```typescript
+	 * // Uninstall with confirmation dialog
+	 * await management.uninstall('abcdefghijklmnop', { showConfirmDialog: true });
+	 *
+	 * // Uninstall without confirmation
+	 * await management.uninstall('abcdefghijklmnop');
+	 * ```
+	 */
+	uninstall(id: string, options?: UninstallOptions): Promise<void>;
+	/**
+	 * Uninstall the calling extension
+	 *
+	 * @param options - Uninstall options
+	 */
+	uninstallSelf(options?: UninstallOptions): Promise<void>;
+	/**
+	 * Launch an app
+	 *
+	 * Launches an application that was installed from the Chrome Web Store.
+	 *
+	 * **Note:** This method is only available in Chrome. Firefox does not support
+	 * Chrome apps - throws an error in Firefox.
+	 *
+	 * @param id - The extension/app ID from `ExtensionInfo.id`
+	 * @throws Error if called in Firefox or if the app cannot be launched
+	 *
+	 * @platform Chrome only
+	 *
+	 * @example
+	 * ```typescript
+	 * await management.launchApp('abcdef...');
+	 * ```
+	 */
+	launchApp(id: string): Promise<void>;
+	/**
+	 * Create an app shortcut
+	 *
+	 * Display options to create shortcuts for an app.
+	 * On Mac, only packaged app shortcuts can be created.
+	 *
+	 * **Note:** This method is only available in Chrome. Firefox does not support
+	 * Chrome apps - throws an error in Firefox.
+	 *
+	 * @param id - The extension/app ID from `ExtensionInfo.id`
+	 * @throws Error if called in Firefox
+	 *
+	 * @platform Chrome only
+	 *
+	 * @example
+	 * ```typescript
+	 * await management.createAppShortcut('abcdef...');
+	 * ```
+	 */
+	createAppShortcut(id: string): Promise<void>;
+	/**
+	 * Set the launch type for an app
+	 *
+	 * Sets how the app should be launched (in a tab, pinned tab, or window).
+	 *
+	 * **Note:** This method is only available in Chrome. Firefox does not support
+	 * Chrome apps - throws an error in Firefox.
+	 *
+	 * @param id - The extension/app ID from `ExtensionInfo.id`
+	 * @param launchType - The launch type. Check `ExtensionInfo.availableLaunchTypes`
+	 *                     to see which launch types are available for this app.
+	 * @throws Error if called in Firefox
+	 *
+	 * @platform Chrome only
+	 *
+	 * @example
+	 * ```typescript
+	 * await management.setLaunchType('abcdef...', 'OPEN_AS_WINDOW');
+	 * ```
+	 */
+	setLaunchType(id: string, launchType: LaunchType): Promise<void>;
+	/**
+	 * Generate an app for a URL
+	 *
+	 * Creates a bookmark app from a URL. Returns the generated app's `ExtensionInfo`.
+	 *
+	 * **Note:** This method is only available in Chrome. Firefox does not support
+	 * Chrome apps - throws an error in Firefox.
+	 *
+	 * @param url - The URL of a web page. Scheme must be "http" or "https".
+	 * @param title - The title of the generated app
+	 * @returns Promise resolving to the generated app's ExtensionInfo
+	 * @throws Error if called in Firefox
+	 *
+	 * @platform Chrome only
+	 *
+	 * @example
+	 * ```typescript
+	 * const app = await management.generateAppForLink(
+	 *   'https://example.com',
+	 *   'Example App'
+	 * );
+	 * console.log('Generated app ID:', app.id);
+	 * ```
+	 */
+	generateAppForLink(url: string, title: string): Promise<ExtensionInfo>;
+	/**
+	 * Event fired when an extension is installed
+	 */
+	get onInstalled(): {
+		addListener(callback: ManagementListener): void;
+		removeListener(callback: ManagementListener): void;
+	};
+	/**
+	 * Event fired when an extension is uninstalled
+	 */
+	get onUninstalled(): {
+		addListener(callback: ManagementUninstalledListener): void;
+		removeListener(callback: ManagementUninstalledListener): void;
+	};
+	/**
+	 * Event fired when an extension is enabled
+	 */
+	get onEnabled(): {
+		addListener(callback: ManagementListener): void;
+		removeListener(callback: ManagementListener): void;
+	};
+	/**
+	 * Event fired when an extension is disabled
+	 */
+	get onDisabled(): {
+		addListener(callback: ManagementListener): void;
+		removeListener(callback: ManagementListener): void;
+	};
+}
+/**
+ * Session filter options
+ */
+export interface SessionFilter {
+	/** Maximum number of results to return */
+	maxResults?: number;
+}
+/**
+ * Tab from a session
+ */
+export interface SessionTab {
+	/** The ID of the window the tab belongs to */
+	windowId: number;
+	/** The tab's index within its window */
+	index: number;
+	/** The URL of the tab */
+	url?: string;
+	/** The title of the tab */
+	title?: string;
+	/** The URL of the tab's favicon */
+	favIconUrl?: string;
+	/** Whether the tab is pinned */
+	pinned: boolean;
+	/** The session ID of the tab */
+	sessionId?: string;
+}
+/**
+ * Window from a session
+ */
+export interface SessionWindow {
+	/** The tabs in this window */
+	tabs: SessionTab[];
+	/** The session ID of the window */
+	sessionId?: string;
+}
+/**
+ * A session entry (tab or window)
+ */
+export interface Session {
+	/** The time when the session was last modified */
+	lastModified: number;
+	/** The tab, if this session represents a tab */
+	tab?: SessionTab;
+	/** The window, if this session represents a window */
+	window?: SessionWindow;
+}
+/**
+ * Device info for synced sessions
+ *
+ * **Cross-browser differences:**
+ * - Chrome: Fully supported via `getDevices()`
+ * - Firefox: `getDevices()` is deprecated and unsupported
+ */
+export interface Device {
+	/** The name of the device */
+	deviceName: string;
+	/** The sessions from this device */
+	sessions: Session[];
+	/**
+	 * Device info string
+	 * @platform Firefox only
+	 */
+	info?: string;
+}
+declare class QevoSessions extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the sessions API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Get the maximum number of sessions that will be stored
+	 */
+	get MAX_SESSION_RESULTS(): number;
+	/**
+	 * Get recently closed tabs and windows
+	 *
+	 * @param filter - Filter options
+	 * @returns Promise with array of sessions
+	 *
+	 * @example
+	 * ```typescript
+	 * const recent = await sessions.getRecentlyClosed({ maxResults: 10 });
+	 * recent.forEach(session => {
+	 *   if (session.tab) {
+	 *     console.log('Closed tab:', session.tab.title);
+	 *   } else if (session.window) {
+	 *     console.log('Closed window with', session.window.tabs.length, 'tabs');
+	 *   }
+	 * });
+	 * ```
+	 */
+	getRecentlyClosed(filter?: SessionFilter): Promise<Session[]>;
+	/**
+	 * Get synced sessions from other devices
+	 *
+	 * Retrieves all devices with synced sessions from the user's Google account.
+	 * Requires the user to be signed in to Chrome sync.
+	 *
+	 * **Note:** This method is only available in Chrome. Firefox has this method
+	 * but it is deprecated and unsupported - returns empty array in Firefox.
+	 *
+	 * @param filter - Optional filter options
+	 * @param filter.maxResults - Maximum number of entries to fetch
+	 * @returns Promise resolving to array of devices. Returns empty array in Firefox.
+	 *
+	 * @platform Chrome only (deprecated in Firefox)
+	 *
+	 * @example
+	 * ```typescript
+	 * const devices = await sessions.getDevices();
+	 * devices.forEach(device => {
+	 *   console.log(`${device.deviceName}: ${device.sessions.length} sessions`);
+	 * });
+	 * ```
+	 */
+	getDevices(filter?: SessionFilter): Promise<Device[]>;
+	/**
+	 * Restore a recently closed tab or window
+	 *
+	 * @param sessionId - The session ID to restore (optional, restores most recent if not provided)
+	 * @returns Promise with the restored session
+	 *
+	 * @example
+	 * ```typescript
+	 * // Restore the most recently closed tab/window
+	 * const restored = await sessions.restore();
+	 *
+	 * // Restore a specific session
+	 * const restored = await sessions.restore(session.tab.sessionId);
+	 * ```
+	 */
+	restore(sessionId?: string): Promise<Session>;
+	/**
+	 * Forget a recently closed tab
+	 *
+	 * Removes the specified recently closed tab from the browser's list
+	 * of recently closed items.
+	 *
+	 * **Note:** This method is only available in Firefox. Chrome does not support
+	 * forgetting individual closed tabs - throws an error in Chrome.
+	 *
+	 * @param windowId - The window ID the closed tab belonged to
+	 * @param sessionId - The session ID (closedId) of the recently closed tab
+	 * @throws Error if called in Chrome
+	 *
+	 * @platform Firefox only
+	 *
+	 * @example
+	 * ```typescript
+	 * const recent = await sessions.getRecentlyClosed();
+	 * if (recent[0]?.tab?.sessionId) {
+	 *   await sessions.forgetClosedTab(recent[0].tab.windowId, recent[0].tab.sessionId);
+	 * }
+	 * ```
+	 */
+	forgetClosedTab(windowId: number, sessionId: string): Promise<void>;
+	/**
+	 * Forget a recently closed window
+	 *
+	 * Removes the specified recently closed window from the browser's list
+	 * of recently closed items.
+	 *
+	 * **Note:** This method is only available in Firefox. Chrome does not support
+	 * forgetting individual closed windows - throws an error in Chrome.
+	 *
+	 * @param sessionId - The session ID (closedId) of the recently closed window
+	 * @throws Error if called in Chrome
+	 *
+	 * @platform Firefox only
+	 *
+	 * @example
+	 * ```typescript
+	 * const recent = await sessions.getRecentlyClosed();
+	 * if (recent[0]?.window?.sessionId) {
+	 *   await sessions.forgetClosedWindow(recent[0].window.sessionId);
+	 * }
+	 * ```
+	 */
+	forgetClosedWindow(sessionId: string): Promise<void>;
+	/**
+	 * Set a key/value pair on a tab
+	 *
+	 * Stores a value that persists across sessions for a given tab.
+	 *
+	 * **Note:** This method is only available in Firefox. Chrome does not support
+	 * tab/window values - throws an error in Chrome.
+	 *
+	 * @param tabId - The ID of the tab to set the value on
+	 * @param key - The key for the value
+	 * @param value - The value to store (any JSON-serializable value)
+	 * @throws Error if called in Chrome
+	 *
+	 * @platform Firefox only
+	 *
+	 * @example
+	 * ```typescript
+	 * await sessions.setTabValue(tabId, 'myKey', { foo: 'bar' });
+	 * ```
+	 */
+	setTabValue(tabId: number, key: string, value: any): Promise<void>;
+	/**
+	 * Get a value from a tab
+	 *
+	 * Retrieves a value that was previously set with `setTabValue()`.
+	 *
+	 * **Note:** This method is only available in Firefox. Chrome does not support
+	 * tab/window values - throws an error in Chrome.
+	 *
+	 * @param tabId - The ID of the tab to get the value from
+	 * @param key - The key for the value
+	 * @returns Promise resolving to the value, or undefined if not set
+	 * @throws Error if called in Chrome
+	 *
+	 * @platform Firefox only
+	 *
+	 * @example
+	 * ```typescript
+	 * const value = await sessions.getTabValue(tabId, 'myKey');
+	 * console.log(value); // { foo: 'bar' }
+	 * ```
+	 */
+	getTabValue(tabId: number, key: string): Promise<string | object | undefined>;
+	/**
+	 * Remove a value from a tab
+	 *
+	 * Removes a value that was previously set with `setTabValue()`.
+	 *
+	 * **Note:** This method is only available in Firefox. Chrome does not support
+	 * tab/window values - throws an error in Chrome.
+	 *
+	 * @param tabId - The ID of the tab to remove the value from
+	 * @param key - The key for the value to remove
+	 * @throws Error if called in Chrome
+	 *
+	 * @platform Firefox only
+	 *
+	 * @example
+	 * ```typescript
+	 * await sessions.removeTabValue(tabId, 'myKey');
+	 * ```
+	 */
+	removeTabValue(tabId: number, key: string): Promise<void>;
+	/**
+	 * Set a key/value pair on a window
+	 *
+	 * Stores a value that persists across sessions for a given window.
+	 *
+	 * **Note:** This method is only available in Firefox. Chrome does not support
+	 * tab/window values - throws an error in Chrome.
+	 *
+	 * @param windowId - The ID of the window to set the value on
+	 * @param key - The key for the value
+	 * @param value - The value to store (any JSON-serializable value)
+	 * @throws Error if called in Chrome
+	 *
+	 * @platform Firefox only
+	 *
+	 * @example
+	 * ```typescript
+	 * await sessions.setWindowValue(windowId, 'myKey', { foo: 'bar' });
+	 * ```
+	 */
+	setWindowValue(windowId: number, key: string, value: any): Promise<void>;
+	/**
+	 * Get a value from a window
+	 *
+	 * Retrieves a value that was previously set with `setWindowValue()`.
+	 *
+	 * **Note:** This method is only available in Firefox. Chrome does not support
+	 * tab/window values - throws an error in Chrome.
+	 *
+	 * @param windowId - The ID of the window to get the value from
+	 * @param key - The key for the value
+	 * @returns Promise resolving to the value, or undefined if not set
+	 * @throws Error if called in Chrome
+	 *
+	 * @platform Firefox only
+	 *
+	 * @example
+	 * ```typescript
+	 * const value = await sessions.getWindowValue(windowId, 'myKey');
+	 * console.log(value); // { foo: 'bar' }
+	 * ```
+	 */
+	getWindowValue(windowId: number, key: string): Promise<string | object | undefined>;
+	/**
+	 * Remove a value from a window
+	 *
+	 * Removes a value that was previously set with `setWindowValue()`.
+	 *
+	 * **Note:** This method is only available in Firefox. Chrome does not support
+	 * tab/window values - throws an error in Chrome.
+	 *
+	 * @param windowId - The ID of the window to remove the value from
+	 * @param key - The key for the value to remove
+	 * @throws Error if called in Chrome
+	 *
+	 * @platform Firefox only
+	 *
+	 * @example
+	 * ```typescript
+	 * await sessions.removeWindowValue(windowId, 'myKey');
+	 * ```
+	 */
+	removeWindowValue(windowId: number, key: string): Promise<void>;
+	/**
+	 * Event fired when a session changes
+	 *
+	 * Fired when recently closed tabs and/or windows are changed.
+	 * This event does not monitor synced sessions changes.
+	 */
+	get onChanged(): {
+		addListener(callback: () => void): void;
+		removeListener(callback: () => void): void;
+	};
+}
+/**
+ * Proxy mode types
+ */
+export type ProxyMode = "direct" | "auto_detect" | "pac_script" | "fixed_servers" | "system";
+/**
+ * Proxy server scheme
+ */
+export type ProxyScheme = "http" | "https" | "quic" | "socks4" | "socks5";
+/**
+ * Proxy server configuration
+ */
+export interface ProxyServer {
+	/** The scheme of the proxy server */
+	scheme?: ProxyScheme;
+	/** The hostname of the proxy server */
+	host: string;
+	/** The port of the proxy server */
+	port?: number;
+}
+/**
+ * Proxy rules configuration
+ */
+export interface ProxyRules {
+	/** Proxy server for all URLs */
+	singleProxy?: ProxyServer;
+	/** Proxy server for HTTP URLs */
+	proxyForHttp?: ProxyServer;
+	/** Proxy server for HTTPS URLs */
+	proxyForHttps?: ProxyServer;
+	/** Proxy server for FTP URLs */
+	proxyForFtp?: ProxyServer;
+	/** Fallback proxy server */
+	fallbackProxy?: ProxyServer;
+	/** List of hosts to bypass proxy for */
+	bypassList?: string[];
+}
+/**
+ * PAC script configuration
+ */
+export interface PacScript {
+	/** URL of the PAC script */
+	url?: string;
+	/** PAC script data */
+	data?: string;
+	/** Whether mandatory */
+	mandatory?: boolean;
+}
+/**
+ * Proxy configuration
+ */
+export interface ProxyConfig {
+	/** The proxy mode */
+	mode: ProxyMode;
+	/** Proxy rules (for fixed_servers mode) */
+	rules?: ProxyRules;
+	/** PAC script configuration (for pac_script mode) */
+	pacScript?: PacScript;
+}
+/**
+ * Proxy settings get/set details
+ */
+export interface ProxySettingsDetails {
+	/** The proxy config value */
+	value: ProxyConfig;
+	/** The scope of the setting */
+	scope?: "regular" | "regular_only" | "incognito_persistent" | "incognito_session_only";
+}
+/**
+ * Proxy error details
+ */
+export interface ProxyErrorDetails {
+	/** Whether the error is fatal */
+	fatal: boolean;
+	/** The error message */
+	error: string;
+	/** Additional details */
+	details: string;
+}
+/**
+ * Firefox proxy info
+ */
+export interface FirefoxProxyInfo {
+	/** Proxy type */
+	type: "direct" | "http" | "https" | "socks" | "socks4";
+	/** Proxy host */
+	host?: string;
+	/** Proxy port */
+	port?: number;
+	/** Username for authentication */
+	username?: string;
+	/** Password for authentication */
+	password?: string;
+	/** Whether to proxy DNS (SOCKS only) */
+	proxyDNS?: boolean;
+	/** Failover timeout in seconds */
+	failoverTimeout?: number;
+}
+/**
+ * Firefox proxy request details
+ */
+export interface FirefoxProxyRequestDetails {
+	/** The URL of the request */
+	url: string;
+	/** The request method */
+	method: string;
+	/** The frame ID */
+	frameId: number;
+	/** The parent frame ID */
+	parentFrameId: number;
+	/** The document URL */
+	documentUrl?: string;
+	/** The tab ID */
+	tabId: number;
+	/** The resource type */
+	type: string;
+	/** The time stamp */
+	timeStamp: number;
+	/** Incognito/private browsing */
+	incognito: boolean;
+}
+declare class QevoProxy extends QevoLogger {
+	private requestListeners;
+	constructor(debug?: boolean);
+	/**
+	 * Check if the proxy API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Proxy settings management (Chrome style)
+	 */
+	get settings(): {
+		/**
+		 * Get current proxy settings
+		 *
+		 * @returns Promise with proxy settings
+		 *
+		 * @example
+		 * ```typescript
+		 * const settings = await proxy.settings.get({});
+		 * console.log('Current proxy mode:', settings.value.mode);
+		 * ```
+		 */
+		get(details: {
+			incognito?: boolean;
+		}): Promise<{
+			value: ProxyConfig;
+			levelOfControl: string;
+		}>;
+		/**
+		 * Set proxy settings
+		 *
+		 * @param details - Proxy settings to apply
+		 *
+		 * @example
+		 * ```typescript
+		 * // Use a fixed proxy server
+		 * await proxy.settings.set({
+		 *   value: {
+		 *     mode: 'fixed_servers',
+		 *     rules: {
+		 *       singleProxy: { host: 'proxy.example.com', port: 8080 }
+		 *     }
+		 *   }
+		 * });
+		 *
+		 * // Use PAC script
+		 * await proxy.settings.set({
+		 *   value: {
+		 *     mode: 'pac_script',
+		 *     pacScript: { url: 'https://example.com/proxy.pac' }
+		 *   }
+		 * });
+		 *
+		 * // Use direct connection
+		 * await proxy.settings.set({
+		 *   value: { mode: 'direct' }
+		 * });
+		 * ```
+		 */
+		set(details: ProxySettingsDetails): Promise<void>;
+		/**
+		 * Clear proxy settings
+		 *
+		 * @param details - Clear options
+		 */
+		clear(details?: {
+			scope?: string;
+		}): Promise<void>;
+	};
+	/**
+	 * Register a proxy request handler (Firefox only)
+	 *
+	 * This allows dynamic proxy selection per-request.
+	 *
+	 * @param listener - Function that returns proxy info for each request
+	 *
+	 * @example Firefox dynamic proxy
+	 * ```typescript
+	 * proxy.onRequest((details) => {
+	 *   if (details.url.includes('api.example.com')) {
+	 *     return { type: 'http', host: 'proxy.example.com', port: 8080 };
+	 *   }
+	 *   return { type: 'direct' };
+	 * });
+	 * ```
+	 */
+	onRequest(listener: (details: FirefoxProxyRequestDetails) => FirefoxProxyInfo | FirefoxProxyInfo[] | Promise<FirefoxProxyInfo | FirefoxProxyInfo[]>): void;
+	/**
+	 * Remove a proxy request handler (Firefox only)
+	 *
+	 * @param listener - The listener to remove
+	 */
+	offRequest(listener: (details: FirefoxProxyRequestDetails) => FirefoxProxyInfo | FirefoxProxyInfo[] | Promise<FirefoxProxyInfo | FirefoxProxyInfo[]>): void;
+	/**
+	 * Event fired when a proxy error occurs
+	 */
+	get onProxyError(): {
+		addListener(callback: (details: ProxyErrorDetails) => void): void;
+		removeListener(callback: (details: ProxyErrorDetails) => void): void;
+	};
+}
+/**
+ * Options for specifying time range and origins
+ *
+ * **Cross-browser differences:**
+ * - `origins`, `excludeOrigins` - Chrome only
+ * - `hostnames`, `cookieStoreId` - Firefox only
+ */
+export interface RemovalOptions {
+	/**
+	 * Remove data accumulated on or after this date.
+	 * Represented in milliseconds since the epoch (accessible via `Date.getTime()`).
+	 * If absent, defaults to 0 (which would remove all browsing data).
+	 */
+	since?: number;
+	/**
+	 * Only remove data associated with these origins.
+	 * @platform Chrome only
+	 */
+	origins?: string[];
+	/**
+	 * Exclude data associated with these origins.
+	 * @platform Chrome only
+	 */
+	excludeOrigins?: string[];
+	/**
+	 * Only remove data associated with these hostnames.
+	 * Only applies to cookies and localStorage.
+	 * @platform Firefox only
+	 */
+	hostnames?: string[];
+	/**
+	 * Only remove data associated with this specific cookie store ID.
+	 * @platform Firefox only
+	 */
+	cookieStoreId?: string;
+	/**
+	 * An object specifying which origin types ought to be cleared.
+	 * If not specified, defaults to clearing only "unprotected" origins.
+	 */
+	originTypes?: {
+		/** Normal websites (default: true) */
+		unprotectedWeb?: boolean;
+		/** Websites installed as hosted applications (be careful!) */
+		protectedWeb?: boolean;
+		/** Extensions and packaged applications (be _really_ careful!) */
+		extension?: boolean;
+	};
+}
+/**
+ * Types of data to remove
+ *
+ * A set of data types. Missing or false data types are not removed.
+ *
+ * **Cross-browser support:**
+ *
+ * | Data Type | Chrome | Firefox |
+ * |-----------|--------|---------|
+ * | `cache` | Yes | Yes (clears entire cache, not limited to time range) |
+ * | `cookies` | Yes | Yes |
+ * | `downloads` | Yes | Yes |
+ * | `formData` | Yes | Yes |
+ * | `history` | Yes | Yes |
+ * | `indexedDB` | Yes | Deprecated, use `remove()` |
+ * | `localStorage` | Yes | Yes |
+ * | `passwords` | Yes | Yes |
+ * | `pluginData` | Yes | Yes |
+ * | `serverBoundCertificates` | Yes | Yes |
+ * | `serviceWorkers` | Yes | Yes |
+ * | `appcache` | Yes | Deprecated |
+ * | `cacheStorage` | Yes | No |
+ * | `fileSystems` | Yes | Deprecated |
+ * | `webSQL` | Yes | Deprecated |
+ */
+export interface DataTypeSet {
+	/**
+	 * Clear application cache.
+	 * @platform Chrome only. Deprecated in Firefox.
+	 */
+	appcache?: boolean;
+	/**
+	 * Clear the browser's cache.
+	 * Note: In Firefox, this clears the _entire_ cache, not limited to the time range.
+	 */
+	cache?: boolean;
+	/**
+	 * Clear cache storage.
+	 * @platform Chrome only
+	 */
+	cacheStorage?: boolean;
+	/** Clear cookies and server-bound certificates */
+	cookies?: boolean;
+	/** Clear the browser's download list (not the downloaded files themselves) */
+	downloads?: boolean;
+	/**
+	 * Clear file systems.
+	 * @platform Chrome only. Deprecated in Firefox.
+	 */
+	fileSystems?: boolean;
+	/** Clear the browser's stored form data (autofill) */
+	formData?: boolean;
+	/** Clear the browser's history */
+	history?: boolean;
+	/**
+	 * Clear IndexedDB data.
+	 * Note: In Firefox, use `remove()` instead of `removeIndexedDB()`.
+	 */
+	indexedDB?: boolean;
+	/** Clear websites' local storage data */
+	localStorage?: boolean;
+	/** Clear the browser's stored passwords */
+	passwords?: boolean;
+	/**
+	 * Clear plugins' data.
+	 * @deprecated
+	 */
+	pluginData?: boolean;
+	/** Clear server-bound certificates */
+	serverBoundCertificates?: boolean;
+	/** Clear service workers */
+	serviceWorkers?: boolean;
+	/**
+	 * Clear WebSQL data.
+	 * @platform Chrome only. Deprecated in Firefox.
+	 */
+	webSQL?: boolean;
+}
+/**
+ * Settings for clearing browsing data
+ *
+ * Returned by `settings()` method to indicate current Clear Browsing Data settings.
+ */
+export interface DataRemovalSettings {
+	/** The current removal options */
+	options: RemovalOptions;
+	/**
+	 * Data types currently selected for removal.
+	 * Values are `true` if both selected to be removed AND permitted to be removed.
+	 */
+	dataToRemove: DataTypeSet;
+	/**
+	 * Data types permitted to be removed (e.g., not blocked by enterprise policy).
+	 * All types will be present with values of `true` if permitted, `false` if not.
+	 */
+	dataRemovalPermitted: DataTypeSet;
+}
+declare class QevoBrowsingData extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the browsingData API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Get the current settings for data removal
+	 *
+	 * @returns Promise with data removal settings
+	 *
+	 * @example
+	 * ```typescript
+	 * const settings = await browsingData.settings();
+	 * console.log('Can remove history:', settings.dataRemovalPermitted.history);
+	 * ```
+	 */
+	settings(): Promise<DataRemovalSettings>;
+	/**
+	 * Remove multiple types of browsing data
+	 *
+	 * @param options - Time range and origin options
+	 * @param dataToRemove - Types of data to remove
+	 *
+	 * @example Remove all data from last hour
+	 * ```typescript
+	 * await browsingData.remove({
+	 *   since: Date.now() - 3600000
+	 * }, {
+	 *   history: true,
+	 *   cookies: true,
+	 *   cache: true,
+	 *   downloads: true
+	 * });
+	 * ```
+	 *
+	 * @example Remove all data
+	 * ```typescript
+	 * await browsingData.remove({}, {
+	 *   history: true,
+	 *   cookies: true,
+	 *   cache: true,
+	 *   localStorage: true,
+	 *   indexedDB: true
+	 * });
+	 * ```
+	 */
+	remove(options: RemovalOptions, dataToRemove: DataTypeSet): Promise<void>;
+	/**
+	 * Clear browser cache
+	 *
+	 * @param options - Time range options
+	 *
+	 * @example
+	 * ```typescript
+	 * // Clear all cache
+	 * await browsingData.removeCache({});
+	 *
+	 * // Clear cache from last day
+	 * await browsingData.removeCache({ since: Date.now() - 86400000 });
+	 * ```
+	 */
+	removeCache(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear cookies
+	 *
+	 * @param options - Time range options
+	 *
+	 * @example
+	 * ```typescript
+	 * await browsingData.removeCookies({});
+	 * ```
+	 */
+	removeCookies(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear download history
+	 *
+	 * @param options - Time range options
+	 */
+	removeDownloads(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear form data
+	 *
+	 * @param options - Time range options
+	 */
+	removeFormData(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear browsing history
+	 *
+	 * @param options - Time range options
+	 *
+	 * @example
+	 * ```typescript
+	 * // Clear all history
+	 * await browsingData.removeHistory({});
+	 * ```
+	 */
+	removeHistory(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear local storage
+	 *
+	 * @param options - Time range options
+	 */
+	removeLocalStorage(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear saved passwords
+	 *
+	 * @param options - Time range options
+	 */
+	removePasswords(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear plugin data (deprecated)
+	 *
+	 * @param options - Time range options
+	 */
+	removePluginData(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear service workers
+	 *
+	 * @param options - Time range options
+	 */
+	removeServiceWorkers(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear cache storage (Chrome only)
+	 *
+	 * **Note:** This method is only available in Chrome. Firefox does not have
+	 * a separate cacheStorage data type.
+	 *
+	 * @param options - Time range options
+	 * @throws Error if called in Firefox
+	 *
+	 * @example
+	 * ```typescript
+	 * // Clear cache storage from the last hour
+	 * await browsingData.removeCacheStorage({
+	 *   since: Date.now() - 3600000
+	 * });
+	 * ```
+	 */
+	removeCacheStorage(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear IndexedDB data
+	 *
+	 * @param options - Time range options
+	 */
+	removeIndexedDB(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear file systems
+	 *
+	 * Clears websites' file system data.
+	 *
+	 * **Note:** This method is only available in Chrome. Firefox has this method
+	 * but it is deprecated and unsupported - does nothing in Firefox.
+	 *
+	 * @param options - Time range and origin options
+	 *
+	 * @platform Chrome only (deprecated in Firefox)
+	 *
+	 * @example
+	 * ```typescript
+	 * await browsingData.removeFileSystems({});
+	 * ```
+	 */
+	removeFileSystems(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear WebSQL data
+	 *
+	 * Clears websites' WebSQL data.
+	 *
+	 * **Note:** This method is only available in Chrome. Firefox has this method
+	 * but it is deprecated and unsupported - does nothing in Firefox.
+	 *
+	 * @param options - Time range and origin options
+	 *
+	 * @platform Chrome only (deprecated in Firefox)
+	 *
+	 * @example
+	 * ```typescript
+	 * await browsingData.removeWebSQL({});
+	 * ```
+	 */
+	removeWebSQL(options: RemovalOptions): Promise<void>;
+	/**
+	 * Clear app cache
+	 *
+	 * Clears websites' appcache data.
+	 *
+	 * **Note:** This method is deprecated. App Cache has been removed from most browsers.
+	 * In Firefox, this method is unsupported and does nothing.
+	 *
+	 * @param options - Time range and origin options
+	 *
+	 * @deprecated App Cache is deprecated and removed from most browsers
+	 * @platform Chrome only (deprecated in Firefox)
+	 *
+	 * @example
+	 * ```typescript
+	 * await browsingData.removeAppcache({});
+	 * ```
+	 */
+	removeAppcache(options: RemovalOptions): Promise<void>;
+}
+/**
+ * Side panel options
+ */
+export interface SidePanelOptions {
+	/** The path to the side panel HTML file */
+	path?: string;
+	/** Whether the side panel is enabled */
+	enabled?: boolean;
+	/** Tab ID to set options for (per-tab options) */
+	tabId?: number;
+}
+/**
+ * Side panel open options
+ */
+export interface SidePanelOpenOptions {
+	/** The window ID to open the side panel in */
+	windowId?: number;
+	/** The tab ID to open the side panel for */
+	tabId?: number;
+}
+/**
+ * Side panel behavior options
+ */
+export interface PanelBehavior {
+	/** Whether clicking the action icon should open the panel */
+	openPanelOnActionClick?: boolean;
+}
+/**
+ * Get panel options
+ */
+export interface GetPanelOptions {
+	/** Tab ID to get options for */
+	tabId?: number;
+}
+declare class QevoSidePanel extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the sidePanel API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Set the side panel options
+	 *
+	 * @param options - Panel options to set
+	 *
+	 * @example Set global side panel
+	 * ```typescript
+	 * await sidePanel.setOptions({
+	 *   path: 'sidepanel.html',
+	 *   enabled: true
+	 * });
+	 * ```
+	 *
+	 * @example Set per-tab side panel
+	 * ```typescript
+	 * await sidePanel.setOptions({
+	 *   tabId: 123,
+	 *   path: 'tab-specific-panel.html',
+	 *   enabled: true
+	 * });
+	 * ```
+	 *
+	 * @example Disable side panel for a tab
+	 * ```typescript
+	 * await sidePanel.setOptions({
+	 *   tabId: 123,
+	 *   enabled: false
+	 * });
+	 * ```
+	 */
+	setOptions(options: SidePanelOptions): Promise<void>;
+	/**
+	 * Get the current side panel options
+	 *
+	 * @param options - Options specifying which panel to get
+	 * @returns Promise with the current panel options
+	 *
+	 * @example Get global options
+	 * ```typescript
+	 * const options = await sidePanel.getOptions({});
+	 * console.log('Panel path:', options.path);
+	 * ```
+	 *
+	 * @example Get tab-specific options
+	 * ```typescript
+	 * const options = await sidePanel.getOptions({ tabId: 123 });
+	 * console.log('Panel enabled:', options.enabled);
+	 * ```
+	 */
+	getOptions(options: GetPanelOptions): Promise<SidePanelOptions>;
+	/**
+	 * Open the side panel
+	 *
+	 * @param options - Open options specifying window or tab
+	 *
+	 * @example Open in current window
+	 * ```typescript
+	 * await sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
+	 * ```
+	 *
+	 * @example Open for specific tab
+	 * ```typescript
+	 * await sidePanel.open({ tabId: 123 });
+	 * ```
+	 */
+	open(options: SidePanelOpenOptions): Promise<void>;
+	/**
+	 * Set the side panel behavior
+	 *
+	 * @param behavior - Behavior options
+	 *
+	 * @example Open panel on action click
+	 * ```typescript
+	 * await sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+	 * ```
+	 */
+	setPanelBehavior(behavior: PanelBehavior): Promise<void>;
+	/**
+	 * Get the current side panel behavior
+	 *
+	 * @returns Promise with the current behavior
+	 */
+	getPanelBehavior(): Promise<PanelBehavior>;
+}
+/**
+ * Reasons for creating an offscreen document
+ */
+export type OffscreenReason = "TESTING" | "AUDIO_PLAYBACK" | "IFRAME_SCRIPTING" | "DOM_SCRAPING" | "BLOBS" | "DOM_PARSER" | "USER_MEDIA" | "DISPLAY_MEDIA" | "WEB_RTC" | "CLIPBOARD" | "LOCAL_STORAGE" | "WORKERS" | "BATTERY_STATUS" | "MATCH_MEDIA" | "GEOLOCATION";
+/**
+ * Options for creating an offscreen document
+ */
+export interface CreateDocumentOptions {
+	/** The URL of the HTML file to load */
+	url: string;
+	/** Reasons for creating the offscreen document */
+	reasons: OffscreenReason[];
+	/** A justification string explaining why the document is needed */
+	justification: string;
+}
+declare class QevoOffscreen extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the offscreen API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Create an offscreen document
+	 *
+	 * Only one offscreen document can exist at a time. If one already exists,
+	 * this will throw an error.
+	 *
+	 * @param options - Options for creating the document
+	 *
+	 * @example Create for DOM parsing
+	 * ```typescript
+	 * await offscreen.createDocument({
+	 *   url: 'offscreen.html',
+	 *   reasons: ['DOM_PARSER'],
+	 *   justification: 'Parse fetched HTML content'
+	 * });
+	 * ```
+	 *
+	 * @example Create for audio playback
+	 * ```typescript
+	 * await offscreen.createDocument({
+	 *   url: 'audio-player.html',
+	 *   reasons: ['AUDIO_PLAYBACK'],
+	 *   justification: 'Play notification sounds'
+	 * });
+	 * ```
+	 *
+	 * @example Create for clipboard access
+	 * ```typescript
+	 * await offscreen.createDocument({
+	 *   url: 'clipboard.html',
+	 *   reasons: ['CLIPBOARD'],
+	 *   justification: 'Copy text to clipboard'
+	 * });
+	 * ```
+	 */
+	createDocument(options: CreateDocumentOptions): Promise<void>;
+	/**
+	 * Check if an offscreen document already exists
+	 *
+	 * @returns Promise with boolean indicating if document exists
+	 *
+	 * @example
+	 * ```typescript
+	 * const hasDoc = await offscreen.hasDocument();
+	 * if (!hasDoc) {
+	 *   await offscreen.createDocument({
+	 *     url: 'offscreen.html',
+	 *     reasons: ['DOM_PARSER'],
+	 *     justification: 'Parse HTML'
+	 *   });
+	 * }
+	 * ```
+	 */
+	hasDocument(): Promise<boolean>;
+	/**
+	 * Close the offscreen document
+	 *
+	 * @example
+	 * ```typescript
+	 * // Create, use, and close an offscreen document
+	 * await offscreen.createDocument({
+	 *   url: 'offscreen.html',
+	 *   reasons: ['DOM_PARSER'],
+	 *   justification: 'Parse HTML'
+	 * });
+	 *
+	 * // Send message to offscreen document to do work
+	 * const result = await chrome.runtime.sendMessage({ target: 'offscreen', action: 'parse' });
+	 *
+	 * // Close when done
+	 * await offscreen.closeDocument();
+	 * ```
+	 */
+	closeDocument(): Promise<void>;
+	/**
+	 * Ensure an offscreen document exists, creating one if needed
+	 *
+	 * This is a convenience method that checks if a document exists
+	 * and creates one if it doesn't.
+	 *
+	 * @param options - Options for creating the document if needed
+	 *
+	 * @example
+	 * ```typescript
+	 * // Ensure document exists before sending message
+	 * await offscreen.ensureDocument({
+	 *   url: 'offscreen.html',
+	 *   reasons: ['DOM_PARSER'],
+	 *   justification: 'Parse HTML content'
+	 * });
+	 *
+	 * // Now safe to communicate with offscreen document
+	 * const result = await chrome.runtime.sendMessage({ action: 'parse', html: '<div>...</div>' });
+	 * ```
+	 */
+	ensureDocument(options: CreateDocumentOptions): Promise<void>;
+}
+/**
+ * Suggestion for the omnibox
+ */
+export interface OmniboxSuggestion {
+	/** The text that is put into the URL bar when the user selects this entry */
+	content: string;
+	/** The description to display in the dropdown */
+	description: string;
+	/** Whether the suggestion should be deleted after being selected */
+	deletable?: boolean;
+}
+/**
+ * Default suggestion (shown in the first row)
+ */
+export interface DefaultSuggestion {
+	/** The description to display */
+	description: string;
+}
+/**
+ * How the user opened the omnibox result
+ */
+export type OnInputEnteredDisposition = "currentTab" | "newForegroundTab" | "newBackgroundTab";
+/**
+ * Suggest function type
+ */
+export type SuggestFunction = (suggestions: OmniboxSuggestion[]) => void;
+declare class QevoOmnibox extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the omnibox API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Set the default suggestion
+	 *
+	 * The default suggestion is shown in the first row of the dropdown.
+	 * Use <match> and <dim> XML tags to style the description.
+	 *
+	 * @param suggestion - The default suggestion
+	 *
+	 * @example
+	 * ```typescript
+	 * omnibox.setDefaultSuggestion({
+	 *   description: 'Search for <match>%s</match> in my extension'
+	 * });
+	 * ```
+	 */
+	setDefaultSuggestion(suggestion: DefaultSuggestion): void;
+	/**
+	 * Handle input started event
+	 *
+	 * Fired when the user starts typing after entering the keyword.
+	 *
+	 * @param callback - Function to call when input starts
+	 *
+	 * @example
+	 * ```typescript
+	 * omnibox.onInputStarted(() => {
+	 *   console.log('User started typing in omnibox');
+	 * });
+	 * ```
+	 */
+	onInputStarted(callback: () => void): void;
+	/**
+	 * Remove input started listener
+	 */
+	offInputStarted(callback: () => void): void;
+	/**
+	 * Handle input changed event
+	 *
+	 * Fired when the user changes their input. Use the suggest function
+	 * to provide suggestions.
+	 *
+	 * @param callback - Function to call when input changes
+	 *
+	 * @example
+	 * ```typescript
+	 * omnibox.onInputChanged((text, suggest) => {
+	 *   // Fetch suggestions based on input
+	 *   const results = searchDatabase(text);
+	 *
+	 *   suggest(results.map(r => ({
+	 *     content: r.url,
+	 *     description: `<match>${r.title}</match> - <dim>${r.description}</dim>`
+	 *   })));
+	 * });
+	 * ```
+	 */
+	onInputChanged(callback: (text: string, suggest: SuggestFunction) => void): void;
+	/**
+	 * Remove input changed listener
+	 */
+	offInputChanged(callback: (text: string, suggest: SuggestFunction) => void): void;
+	/**
+	 * Handle input entered event
+	 *
+	 * Fired when the user selects a suggestion or presses enter.
+	 *
+	 * @param callback - Function to call when input is entered
+	 *
+	 * @example
+	 * ```typescript
+	 * omnibox.onInputEntered((text, disposition) => {
+	 *   const url = `https://example.com/search?q=${encodeURIComponent(text)}`;
+	 *
+	 *   switch (disposition) {
+	 *     case 'currentTab':
+	 *       chrome.tabs.update({ url });
+	 *       break;
+	 *     case 'newForegroundTab':
+	 *       chrome.tabs.create({ url });
+	 *       break;
+	 *     case 'newBackgroundTab':
+	 *       chrome.tabs.create({ url, active: false });
+	 *       break;
+	 *   }
+	 * });
+	 * ```
+	 */
+	onInputEntered(callback: (text: string, disposition: OnInputEnteredDisposition) => void): void;
+	/**
+	 * Remove input entered listener
+	 */
+	offInputEntered(callback: (text: string, disposition: OnInputEnteredDisposition) => void): void;
+	/**
+	 * Handle input cancelled event
+	 *
+	 * Fired when the user cancels the input session (e.g., by pressing Escape).
+	 *
+	 * @param callback - Function to call when input is cancelled
+	 */
+	onInputCancelled(callback: () => void): void;
+	/**
+	 * Remove input cancelled listener
+	 */
+	offInputCancelled(callback: () => void): void;
+	/**
+	 * Handle delete suggestion event (Chrome only)
+	 *
+	 * Fired when the user deletes a suggestion (Shift+Delete).
+	 *
+	 * @param callback - Function to call when a suggestion is deleted
+	 */
+	onDeleteSuggestion(callback: (text: string) => void): void;
+	/**
+	 * Remove delete suggestion listener
+	 */
+	offDeleteSuggestion(callback: (text: string) => void): void;
+}
+/**
+ * Most visited URL entry
+ */
+export interface MostVisitedURL {
+	/** The URL of the site */
+	url: string;
+	/** The title of the site */
+	title: string;
+}
+declare class QevoTopSites extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the topSites API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Get the most visited sites
+	 *
+	 * Returns an array of the most visited URLs. The number of results
+	 * varies by browser but is typically around 8-10 sites.
+	 *
+	 * @returns Promise with array of most visited URLs
+	 *
+	 * @example
+	 * ```typescript
+	 * const sites = await topSites.get();
+	 * sites.forEach(site => {
+	 *   console.log(`${site.title}: ${site.url}`);
+	 * });
+	 * ```
+	 *
+	 * @example Build a custom new tab page
+	 * ```typescript
+	 * const sites = await topSites.get();
+	 * const html = sites.map(site =>
+	 *   `<a href="${site.url}">${site.title || site.url}</a>`
+	 * ).join('');
+	 * document.getElementById('top-sites').innerHTML = html;
+	 * ```
+	 */
+	get(): Promise<MostVisitedURL[]>;
+}
+/**
+ * TTS voice gender
+ */
+export type VoiceGender = "male" | "female";
+/**
+ * TTS event type
+ */
+export type TtsEventType = "start" | "end" | "word" | "sentence" | "marker" | "interrupted" | "cancelled" | "error" | "pause" | "resume";
+/**
+ * TTS voice information
+ */
+export interface TtsVoice {
+	/** The name of the voice */
+	voiceName?: string;
+	/** The language code (e.g., 'en-US') */
+	lang?: string;
+	/** The gender of the voice */
+	gender?: VoiceGender;
+	/** Whether this is a remote voice */
+	remote?: boolean;
+	/** The ID of the extension providing this voice */
+	extensionId?: string;
+	/** Event types this voice supports */
+	eventTypes?: TtsEventType[];
+}
+/**
+ * TTS speak options
+ */
+export interface TtsOptions {
+	/** Text to speak (alternative to first parameter) */
+	utterance?: string;
+	/** Speaking rate (0.1 to 10.0, default 1.0) */
+	rate?: number;
+	/** Pitch (0 to 2, default 1.0) */
+	pitch?: number;
+	/** Volume (0 to 1, default 1.0) */
+	volume?: number;
+	/** Language code */
+	lang?: string;
+	/** Specific voice name */
+	voiceName?: string;
+	/** Desired gender */
+	gender?: VoiceGender;
+	/** Extension ID of the speech engine */
+	extensionId?: string;
+	/** Whether to queue or interrupt current speech */
+	enqueue?: boolean;
+	/** Required event types */
+	requiredEventTypes?: TtsEventType[];
+	/** Desired event types */
+	desiredEventTypes?: TtsEventType[];
+	/** Callback for TTS events */
+	onEvent?: (event: TtsEvent) => void;
+}
+/**
+ * TTS event
+ */
+export interface TtsEvent {
+	/** The type of event */
+	type: TtsEventType;
+	/** Character index in the utterance */
+	charIndex?: number;
+	/** The length of the string */
+	length?: number;
+	/** Error message (for error events) */
+	errorMessage?: string;
+	/** Whether this is the final event */
+	isFinalEvent?: boolean;
+	/** Source extension ID */
+	srcId?: number;
+}
+declare class QevoTts extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the tts API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Speak the given text
+	 *
+	 * @param utterance - Text to speak
+	 * @param options - Speech options
+	 * @returns Promise that resolves when speech starts (not when it ends)
+	 *
+	 * @example Simple speech
+	 * ```typescript
+	 * await tts.speak('Hello, world!');
+	 * ```
+	 *
+	 * @example With options
+	 * ```typescript
+	 * await tts.speak('Hello, world!', {
+	 *   lang: 'en-US',
+	 *   rate: 1.2,
+	 *   pitch: 1.0,
+	 *   volume: 0.8,
+	 *   onEvent: (event) => {
+	 *     if (event.type === 'end') {
+	 *       console.log('Speech finished');
+	 *     }
+	 *   }
+	 * });
+	 * ```
+	 *
+	 * @example Queue multiple utterances
+	 * ```typescript
+	 * await tts.speak('First sentence.', { enqueue: true });
+	 * await tts.speak('Second sentence.', { enqueue: true });
+	 * await tts.speak('Third sentence.', { enqueue: true });
+	 * ```
+	 */
+	speak(utterance: string, options?: TtsOptions): Promise<void>;
+	/**
+	 * Stop all current speech
+	 *
+	 * @example
+	 * ```typescript
+	 * tts.speak('This is a long sentence that will be interrupted.');
+	 * setTimeout(() => {
+	 *   tts.stop();
+	 * }, 1000);
+	 * ```
+	 */
+	stop(): void;
+	/**
+	 * Pause speech (Chrome only)
+	 */
+	pause(): void;
+	/**
+	 * Resume paused speech (Chrome only)
+	 */
+	resume(): void;
+	/**
+	 * Check if speech is currently in progress
+	 *
+	 * @returns Promise with speaking status
+	 *
+	 * @example
+	 * ```typescript
+	 * const speaking = await tts.isSpeaking();
+	 * if (speaking) {
+	 *   console.log('Currently speaking');
+	 * }
+	 * ```
+	 */
+	isSpeaking(): Promise<boolean>;
+	/**
+	 * Get available voices
+	 *
+	 * @returns Promise with array of available voices
+	 *
+	 * @example
+	 * ```typescript
+	 * const voices = await tts.getVoices();
+	 * voices.forEach(voice => {
+	 *   console.log(`${voice.voiceName} (${voice.lang})`);
+	 * });
+	 * ```
+	 *
+	 * @example Find English voices
+	 * ```typescript
+	 * const voices = await tts.getVoices();
+	 * const englishVoices = voices.filter(v => v.lang?.startsWith('en'));
+	 * ```
+	 */
+	getVoices(): Promise<TtsVoice[]>;
+	/**
+	 * Event fired when voices change
+	 */
+	get onVoicesChanged(): {
+		addListener(callback: () => void): void;
+		removeListener(callback: () => void): void;
+	};
+}
+/**
+ * Level of control for a setting
+ */
+export type LevelOfControl = "not_controllable" | "controlled_by_other_extensions" | "controllable_by_this_extension" | "controlled_by_this_extension";
+/**
+ * Scope for setting a value
+ */
+export type SettingScope = "regular" | "regular_only" | "incognito_persistent" | "incognito_session_only";
+/**
+ * Setting get result
+ */
+export interface SettingGetResult<T> {
+	/** The current value */
+	value: T;
+	/** Level of control */
+	levelOfControl: LevelOfControl;
+	/** Whether incognito has specific setting */
+	incognitoSpecific?: boolean;
+}
+/**
+ * Setting get details
+ */
+export interface SettingGetDetails {
+	/** Whether to get incognito-specific value */
+	incognito?: boolean;
+}
+/**
+ * Setting set details
+ */
+export interface SettingSetDetails<T> {
+	/** The value to set */
+	value: T;
+	/** The scope */
+	scope?: SettingScope;
+}
+/**
+ * Setting clear details
+ */
+export interface SettingClearDetails {
+	/** The scope */
+	scope?: SettingScope;
+}
+/**
+ * Chrome setting interface
+ */
+export interface ChromeSetting<T> {
+	get(details: SettingGetDetails): Promise<SettingGetResult<T>>;
+	set(details: SettingSetDetails<T>): Promise<void>;
+	clear(details?: SettingClearDetails): Promise<void>;
+	onChange: {
+		addListener(callback: (details: {
+			value: T;
+			levelOfControl: LevelOfControl;
+		}) => void): void;
+		removeListener(callback: (details: {
+			value: T;
+			levelOfControl: LevelOfControl;
+		}) => void): void;
+	};
+}
+declare class QevoPrivacy extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the privacy API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Network-related privacy settings
+	 */
+	get network(): {
+		/**
+		 * Whether network prediction is enabled
+		 */
+		readonly networkPredictionEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether WebRTC uses non-proxied UDP (Chrome only)
+		 */
+		readonly webRTCIPHandlingPolicy: ChromeSetting<string>;
+	};
+	/**
+	 * Services-related privacy settings
+	 */
+	get services(): {
+		/**
+		 * Whether alternate error pages are enabled
+		 */
+		readonly alternateErrorPagesEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether autofill is enabled (Chrome only)
+		 */
+		readonly autofillEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether autofill for addresses is enabled
+		 */
+		readonly autofillAddressEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether autofill for credit cards is enabled
+		 */
+		readonly autofillCreditCardEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether password saving is enabled
+		 */
+		readonly passwordSavingEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether Safe Browsing is enabled
+		 */
+		readonly safeBrowsingEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether Safe Browsing extended reporting is enabled
+		 */
+		readonly safeBrowsingExtendedReportingEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether search suggest is enabled
+		 */
+		readonly searchSuggestEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether spell checking is enabled
+		 */
+		readonly spellingServiceEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether translation is enabled
+		 */
+		readonly translationServiceEnabled: ChromeSetting<boolean>;
+	};
+	/**
+	 * Website-related privacy settings
+	 */
+	get websites(): {
+		/**
+		 * Whether third-party cookies are allowed
+		 */
+		readonly thirdPartyCookiesAllowed: ChromeSetting<boolean>;
+		/**
+		 * Whether hyperlinkAuditing (ping) is enabled
+		 */
+		readonly hyperlinkAuditingEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether referrers are enabled
+		 */
+		readonly referrersEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether Do Not Track is enabled
+		 */
+		readonly doNotTrackEnabled: ChromeSetting<boolean>;
+		/**
+		 * Whether protected content is enabled (Chrome only)
+		 */
+		readonly protectedContentEnabled: ChromeSetting<boolean>;
+		/**
+		 * Cookie control settings (Firefox only)
+		 */
+		readonly cookieConfig: ChromeSetting<{
+			behavior: "allow_all" | "reject_all" | "reject_third_party" | "allow_visited" | "reject_trackers" | "reject_trackers_and_partition_foreign";
+			nonPersistentCookies: boolean;
+		}>;
+		/**
+		 * First-party isolation (Firefox only)
+		 */
+		readonly firstPartyIsolate: ChromeSetting<boolean>;
+		/**
+		 * Resist fingerprinting (Firefox only)
+		 */
+		readonly resistFingerprinting: ChromeSetting<boolean>;
+		/**
+		 * Tracking protection (Firefox only)
+		 */
+		readonly trackingProtectionMode: ChromeSetting<"always" | "never" | "private_browsing">;
+	};
+}
+/**
+ * Options for saving as MHTML
+ */
+export interface SaveAsMHTMLOptions {
+	/** The ID of the tab to save */
+	tabId: number;
+}
+declare class QevoPageCapture extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the pageCapture API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Save a tab as MHTML
+	 *
+	 * Captures the visible contents of the tab including all resources
+	 * as a single MHTML file.
+	 *
+	 * @param options - Options specifying which tab to capture
+	 * @returns Promise with the MHTML data as a Blob
+	 *
+	 * @example Capture and download a page
+	 * ```typescript
+	 * const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+	 * const mhtml = await pageCapture.saveAsMHTML({ tabId: tab.id });
+	 *
+	 * // Create download URL
+	 * const url = URL.createObjectURL(mhtml);
+	 *
+	 * // Download the file
+	 * await chrome.downloads.download({
+	 *   url,
+	 *   filename: `${tab.title || 'page'}.mhtml`,
+	 *   saveAs: true
+	 * });
+	 *
+	 * // Clean up
+	 * URL.revokeObjectURL(url);
+	 * ```
+	 *
+	 * @example Capture and store locally
+	 * ```typescript
+	 * const mhtml = await pageCapture.saveAsMHTML({ tabId: 123 });
+	 *
+	 * // Convert to base64 for storage
+	 * const reader = new FileReader();
+	 * reader.onloadend = () => {
+	 *   const base64 = reader.result as string;
+	 *   chrome.storage.local.set({ savedPage: base64 });
+	 * };
+	 * reader.readAsDataURL(mhtml);
+	 * ```
+	 */
+	saveAsMHTML(options: SaveAsMHTMLOptions): Promise<Blob>;
+}
+/**
+ * Generic font family types
+ */
+export type GenericFamily = "standard" | "sansserif" | "serif" | "fixed" | "cursive" | "fantasy" | "math";
+/**
+ * Script code for font settings (ISO 15924)
+ */
+export type ScriptCode = "Afak" | "Arab" | "Armi" | "Armn" | "Avst" | "Bali" | "Bamu" | "Bass" | "Batk" | "Beng" | "Blis" | "Bopo" | "Brah" | "Brai" | "Bugi" | "Buhd" | "Cakm" | "Cans" | "Cari" | "Cham" | "Cher" | "Cirt" | "Copt" | "Cprt" | "Cyrl" | "Cyrs" | "Deva" | "Dsrt" | "Dupl" | "Egyd" | "Egyh" | "Egyp" | "Elba" | "Ethi" | "Geok" | "Geor" | "Glag" | "Goth" | "Gran" | "Grek" | "Gujr" | "Guru" | "Hang" | "Hani" | "Hano" | "Hans" | "Hant" | "Hebr" | "Hluw" | "Hmng" | "Hung" | "Inds" | "Ital" | "Java" | "Jpan" | "Jurc" | "Kali" | "Khar" | "Khmr" | "Khoj" | "Knda" | "Kore" | "Kpel" | "Kthi" | "Lana" | "Laoo" | "Latf" | "Latg" | "Latn" | "Lepc" | "Limb" | "Lina" | "Linb" | "Lisu" | "Loma" | "Lyci" | "Lydi" | "Mand" | "Mani" | "Maya" | "Mend" | "Merc" | "Mero" | "Mlym" | "Moon" | "Mong" | "Mroo" | "Mtei" | "Mymr" | "Narb" | "Nbat" | "Nkgb" | "Nkoo" | "Nshu" | "Ogam" | "Olck" | "Orkh" | "Orya" | "Osma" | "Palm" | "Perm" | "Phag" | "Phli" | "Phlp" | "Phlv" | "Phnx" | "Plrd" | "Prti" | "Rjng" | "Roro" | "Runr" | "Samr" | "Sara" | "Sarb" | "Saur" | "Sgnw" | "Shaw" | "Shrd" | "Sind" | "Sinh" | "Sora" | "Sund" | "Sylo" | "Syrc" | "Syre" | "Syrj" | "Syrn" | "Tagb" | "Takr" | "Tale" | "Talu" | "Taml" | "Tang" | "Tavt" | "Telu" | "Teng" | "Tfng" | "Tglg" | "Thaa" | "Thai" | "Tibt" | "Tirh" | "Ugar" | "Vaii" | "Visp" | "Wara" | "Wole" | "Xpeo" | "Xsux" | "Yiii" | "Zmth" | "Zsym" | "Zyyy";
+/**
+ * Font name information
+ */
+export interface FontName {
+	/** The font ID */
+	fontId: string;
+	/** The display name of the font */
+	displayName: string;
+}
+/**
+ * Options for getting/setting font
+ */
+export interface FontDetails {
+	/** The script code */
+	script?: ScriptCode;
+	/** The generic font family */
+	genericFamily: GenericFamily;
+}
+/**
+ * Options for setting font
+ */
+export interface SetFontDetails extends FontDetails {
+	/** The font ID to set */
+	fontId: string;
+}
+type LevelOfControl$1 = "not_controllable" | "controlled_by_other_extensions" | "controllable_by_this_extension" | "controlled_by_this_extension";
+declare class QevoFontSettings extends QevoLogger {
+	constructor(debug?: boolean);
+	/**
+	 * Check if the fontSettings API is available
+	 */
+	isAvailable(): boolean;
+	/**
+	 * Get a list of available fonts
+	 *
+	 * @returns Promise with array of font names
+	 *
+	 * @example
+	 * ```typescript
+	 * const fonts = await fontSettings.getFontList();
+	 * fonts.forEach(font => {
+	 *   console.log(`${font.displayName} (${font.fontId})`);
+	 * });
+	 * ```
+	 */
+	getFontList(): Promise<FontName[]>;
+	/**
+	 * Get the font for a given script and generic family
+	 *
+	 * @param details - Script and generic family
+	 * @returns Promise with font info
+	 *
+	 * @example
+	 * ```typescript
+	 * const font = await fontSettings.getFont({
+	 *   script: 'Latn',
+	 *   genericFamily: 'standard'
+	 * });
+	 * console.log('Default font:', font.fontId);
+	 * ```
+	 */
+	getFont(details: FontDetails): Promise<{
+		fontId: string;
+		levelOfControl: LevelOfControl$1;
+	}>;
+	/**
+	 * Set the font for a given script and generic family
+	 *
+	 * @param details - Script, generic family, and font ID
+	 *
+	 * @example
+	 * ```typescript
+	 * await fontSettings.setFont({
+	 *   script: 'Latn',
+	 *   genericFamily: 'standard',
+	 *   fontId: 'Arial'
+	 * });
+	 * ```
+	 */
+	setFont(details: SetFontDetails): Promise<void>;
+	/**
+	 * Clear the font for a given script and generic family
+	 *
+	 * @param details - Script and generic family to clear
+	 */
+	clearFont(details: FontDetails): Promise<void>;
+	/**
+	 * Get the default font size
+	 *
+	 * @param details - Empty object or incognito flag
+	 * @returns Promise with pixel size and control level
+	 */
+	getDefaultFontSize(details: {
+		incognito?: boolean;
+	}): Promise<{
+		pixelSize: number;
+		levelOfControl: LevelOfControl$1;
+	}>;
+	/**
+	 * Set the default font size
+	 *
+	 * @param details - Pixel size to set
+	 */
+	setDefaultFontSize(details: {
+		pixelSize: number;
+	}): Promise<void>;
+	/**
+	 * Clear the default font size
+	 */
+	clearDefaultFontSize(details?: {
+		incognito?: boolean;
+	}): Promise<void>;
+	/**
+	 * Get the default fixed font size
+	 */
+	getDefaultFixedFontSize(details: {
+		incognito?: boolean;
+	}): Promise<{
+		pixelSize: number;
+		levelOfControl: LevelOfControl$1;
+	}>;
+	/**
+	 * Set the default fixed font size
+	 */
+	setDefaultFixedFontSize(details: {
+		pixelSize: number;
+	}): Promise<void>;
+	/**
+	 * Clear the default fixed font size
+	 */
+	clearDefaultFixedFontSize(details?: {
+		incognito?: boolean;
+	}): Promise<void>;
+	/**
+	 * Get the minimum font size
+	 */
+	getMinimumFontSize(details: {
+		incognito?: boolean;
+	}): Promise<{
+		pixelSize: number;
+		levelOfControl: LevelOfControl$1;
+	}>;
+	/**
+	 * Set the minimum font size
+	 */
+	setMinimumFontSize(details: {
+		pixelSize: number;
+	}): Promise<void>;
+	/**
+	 * Clear the minimum font size
+	 */
+	clearMinimumFontSize(details?: {
+		incognito?: boolean;
+	}): Promise<void>;
+	/**
+	 * Event fired when a font setting changes
+	 */
+	get onFontChanged(): {
+		addListener(callback: (details: {
+			fontId: string;
+			script?: ScriptCode;
+			genericFamily: GenericFamily;
+			levelOfControl: LevelOfControl$1;
+		}) => void): void;
+		removeListener(callback: (details: {
+			fontId: string;
+			script?: ScriptCode;
+			genericFamily: GenericFamily;
+			levelOfControl: LevelOfControl$1;
+		}) => void): void;
+	};
+	/**
+	 * Event fired when the default font size changes
+	 */
+	get onDefaultFontSizeChanged(): {
+		addListener(callback: (details: {
+			pixelSize: number;
+			levelOfControl: LevelOfControl$1;
+		}) => void): void;
+		removeListener(callback: (details: {
+			pixelSize: number;
+			levelOfControl: LevelOfControl$1;
+		}) => void): void;
+	};
+	/**
+	 * Event fired when the default fixed font size changes
+	 */
+	get onDefaultFixedFontSizeChanged(): {
+		addListener(callback: (details: {
+			pixelSize: number;
+			levelOfControl: LevelOfControl$1;
+		}) => void): void;
+		removeListener(callback: (details: {
+			pixelSize: number;
+			levelOfControl: LevelOfControl$1;
+		}) => void): void;
+	};
+	/**
+	 * Event fired when the minimum font size changes
+	 */
+	get onMinimumFontSizeChanged(): {
+		addListener(callback: (details: {
+			pixelSize: number;
+			levelOfControl: LevelOfControl$1;
+		}) => void): void;
+		removeListener(callback: (details: {
+			pixelSize: number;
+			levelOfControl: LevelOfControl$1;
+		}) => void): void;
+	};
+}
+/**
  * Qevo - Cross-Browser Extension Toolkit Core Class
  *
  * Singleton class providing unified cross-browser extension APIs.
@@ -5756,6 +9208,21 @@ export declare class Qevo {
 	private _i18nInstance?;
 	private _idleInstance?;
 	private _runtimeInstance?;
+	private _webNavigationInstance?;
+	private _declarativeNetRequestInstance?;
+	private _devtoolsInstance?;
+	private _managementInstance?;
+	private _sessionsInstance?;
+	private _proxyInstance?;
+	private _browsingDataInstance?;
+	private _sidePanelInstance?;
+	private _offscreenInstance?;
+	private _omniboxInstance?;
+	private _topSitesInstance?;
+	private _ttsInstance?;
+	private _privacyInstance?;
+	private _pageCaptureInstance?;
+	private _fontSettingsInstance?;
 	/**
 	 * Private constructor - use `Qevo.getInstance()` or the `qevo` export
 	 * @private
@@ -6361,6 +9828,341 @@ export declare class Qevo {
 	 */
 	get runtime(): QevoRuntime;
 	/**
+	 * WebNavigation API - Monitor navigation lifecycle events
+	 *
+	 * Provides access to `chrome.webNavigation` / `browser.webNavigation` for
+	 * monitoring page navigation events including before navigate, committed,
+	 * DOM content loaded, and completed.
+	 *
+	 * @returns {QevoWebNavigation} WebNavigation API instance
+	 *
+	 * @example Monitor navigation
+	 * ```typescript
+	 * // Monitor navigation start
+	 * qevo.webNavigation.on('BeforeNavigate', (details) => {
+	 *   console.log('Navigation starting:', details.url);
+	 * });
+	 *
+	 * // Monitor page load completion
+	 * qevo.webNavigation.on('Completed', (details) => {
+	 *   console.log('Page loaded:', details.url);
+	 * });
+	 *
+	 * // Get all frames in a tab
+	 * const frames = await qevo.webNavigation.getAllFrames({ tabId: 123 });
+	 * ```
+	 */
+	get webNavigation(): QevoWebNavigation;
+	/**
+	 * DeclarativeNetRequest API - MV3 network request rules
+	 *
+	 * Provides access to `chrome.declarativeNetRequest` for modifying network
+	 * requests using declarative rules. This is the MV3 replacement for
+	 * blocking webRequest operations.
+	 *
+	 * @returns {QevoDeclarativeNetRequest} DeclarativeNetRequest API instance
+	 *
+	 * @example Manage rules
+	 * ```typescript
+	 * // Add a blocking rule
+	 * await qevo.declarativeNetRequest.updateDynamicRules({
+	 *   addRules: [{
+	 *     id: 1,
+	 *     priority: 1,
+	 *     action: { type: 'block' },
+	 *     condition: { urlFilter: '*://ads.example.com/*' }
+	 *   }]
+	 * });
+	 *
+	 * // Get all dynamic rules
+	 * const rules = await qevo.declarativeNetRequest.getDynamicRules();
+	 * ```
+	 */
+	get declarativeNetRequest(): QevoDeclarativeNetRequest;
+	/**
+	 * Devtools API - DevTools panels and inspected window
+	 *
+	 * Provides access to `chrome.devtools` for creating DevTools panels,
+	 * accessing the inspected window, and network information.
+	 * **Note:** Only available in DevTools pages.
+	 *
+	 * @returns {QevoDevtools} Devtools API instance
+	 *
+	 * @example Create DevTools panel
+	 * ```typescript
+	 * // Create a panel
+	 * const panel = await qevo.devtools.panels.create(
+	 *   'My Panel',
+	 *   'icon.png',
+	 *   'panel.html'
+	 * );
+	 *
+	 * // Evaluate in inspected window
+	 * const result = await qevo.devtools.inspectedWindow.eval('document.title');
+	 * ```
+	 */
+	get devtools(): QevoDevtools;
+	/**
+	 * Management API - Manage installed extensions
+	 *
+	 * Provides access to `chrome.management` / `browser.management` for
+	 * listing, enabling, disabling, and managing installed extensions.
+	 *
+	 * @returns {QevoManagement} Management API instance
+	 *
+	 * @example Manage extensions
+	 * ```typescript
+	 * // Get all installed extensions
+	 * const extensions = await qevo.management.getAll();
+	 *
+	 * // Get current extension info
+	 * const self = await qevo.management.getSelf();
+	 *
+	 * // Enable/disable an extension
+	 * await qevo.management.setEnabled(extensionId, false);
+	 * ```
+	 */
+	get management(): QevoManagement;
+	/**
+	 * Sessions API - Query and restore browser sessions
+	 *
+	 * Provides access to `chrome.sessions` / `browser.sessions` for
+	 * querying recently closed tabs/windows and restoring them.
+	 *
+	 * @returns {QevoSessions} Sessions API instance
+	 *
+	 * @example Work with sessions
+	 * ```typescript
+	 * // Get recently closed tabs/windows
+	 * const sessions = await qevo.sessions.getRecentlyClosed({ maxResults: 10 });
+	 *
+	 * // Restore a session
+	 * await qevo.sessions.restore(sessionId);
+	 *
+	 * // Get devices (for synced sessions)
+	 * const devices = await qevo.sessions.getDevices();
+	 * ```
+	 */
+	get sessions(): QevoSessions;
+	/**
+	 * Proxy API - Manage proxy settings
+	 *
+	 * Provides access to `chrome.proxy` / `browser.proxy` for
+	 * configuring browser proxy settings.
+	 *
+	 * @returns {QevoProxy} Proxy API instance
+	 *
+	 * @example Configure proxy
+	 * ```typescript
+	 * // Set proxy (Chrome)
+	 * await qevo.proxy.setSettings({
+	 *   value: {
+	 *     mode: 'fixed_servers',
+	 *     rules: { singleProxy: { host: 'proxy.example.com', port: 8080 } }
+	 *   }
+	 * });
+	 *
+	 * // Get current settings
+	 * const settings = await qevo.proxy.getSettings();
+	 * ```
+	 */
+	get proxy(): QevoProxy;
+	/**
+	 * BrowsingData API - Clear browsing data
+	 *
+	 * Provides access to `chrome.browsingData` / `browser.browsingData` for
+	 * clearing various types of browsing data like cache, cookies, history, etc.
+	 *
+	 * @returns {QevoBrowsingData} BrowsingData API instance
+	 *
+	 * @example Clear data
+	 * ```typescript
+	 * // Clear all browsing data from the last hour
+	 * await qevo.browsingData.remove({
+	 *   since: Date.now() - (60 * 60 * 1000)
+	 * }, {
+	 *   cache: true,
+	 *   cookies: true,
+	 *   history: true
+	 * });
+	 *
+	 * // Clear just cache
+	 * await qevo.browsingData.removeCache({});
+	 * ```
+	 */
+	get browsingData(): QevoBrowsingData;
+	/**
+	 * SidePanel API - Chrome side panel (MV3)
+	 *
+	 * Provides access to `chrome.sidePanel` for managing the extension's
+	 * side panel. **Chrome only, MV3.**
+	 *
+	 * @returns {QevoSidePanel} SidePanel API instance
+	 *
+	 * @example Manage side panel
+	 * ```typescript
+	 * // Set panel options
+	 * await qevo.sidePanel.setOptions({
+	 *   path: 'sidepanel.html',
+	 *   enabled: true
+	 * });
+	 *
+	 * // Open the side panel
+	 * await qevo.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
+	 * ```
+	 */
+	get sidePanel(): QevoSidePanel;
+	/**
+	 * Offscreen API - Offscreen documents (MV3)
+	 *
+	 * Provides access to `chrome.offscreen` for creating offscreen documents
+	 * that can perform DOM operations. **Chrome only, MV3.**
+	 *
+	 * @returns {QevoOffscreen} Offscreen API instance
+	 *
+	 * @example Create offscreen document
+	 * ```typescript
+	 * // Create an offscreen document
+	 * await qevo.offscreen.createDocument({
+	 *   url: 'offscreen.html',
+	 *   reasons: ['DOM_PARSER'],
+	 *   justification: 'Parse HTML content'
+	 * });
+	 *
+	 * // Check if document exists
+	 * const hasDoc = await qevo.offscreen.hasDocument();
+	 * ```
+	 */
+	get offscreen(): QevoOffscreen;
+	/**
+	 * Omnibox API - Address bar suggestions
+	 *
+	 * Provides access to `chrome.omnibox` / `browser.omnibox` for providing
+	 * custom suggestions in the browser's address bar.
+	 *
+	 * @returns {QevoOmnibox} Omnibox API instance
+	 *
+	 * @example Provide suggestions
+	 * ```typescript
+	 * // Set default suggestion
+	 * qevo.omnibox.setDefaultSuggestion({
+	 *   description: 'Search my extension for <match>%s</match>'
+	 * });
+	 *
+	 * // Handle input changes
+	 * qevo.omnibox.onInputChanged((text, suggest) => {
+	 *   suggest([
+	 *     { content: 'result1', description: 'First result' }
+	 *   ]);
+	 * });
+	 *
+	 * // Handle selection
+	 * qevo.omnibox.onInputEntered((text, disposition) => {
+	 *   console.log('Selected:', text);
+	 * });
+	 * ```
+	 */
+	get omnibox(): QevoOmnibox;
+	/**
+	 * TopSites API - Most visited sites
+	 *
+	 * Provides access to `chrome.topSites` / `browser.topSites` for
+	 * retrieving the user's most frequently visited sites.
+	 *
+	 * @returns {QevoTopSites} TopSites API instance
+	 *
+	 * @example Get top sites
+	 * ```typescript
+	 * const sites = await qevo.topSites.get();
+	 * sites.forEach(site => {
+	 *   console.log(site.title, site.url);
+	 * });
+	 * ```
+	 */
+	get topSites(): QevoTopSites;
+	/**
+	 * TTS API - Text-to-speech
+	 *
+	 * Provides access to `chrome.tts` / `browser.tts` for text-to-speech
+	 * synthesis capabilities.
+	 *
+	 * @returns {QevoTts} TTS API instance
+	 *
+	 * @example Text-to-speech
+	 * ```typescript
+	 * // Speak text
+	 * await qevo.tts.speak('Hello, world!', {
+	 *   rate: 1.0,
+	 *   pitch: 1.0,
+	 *   volume: 1.0
+	 * });
+	 *
+	 * // Get available voices
+	 * const voices = await qevo.tts.getVoices();
+	 *
+	 * // Stop speaking
+	 * qevo.tts.stop();
+	 * ```
+	 */
+	get tts(): QevoTts;
+	/**
+	 * Privacy API - Privacy settings
+	 *
+	 * Provides access to `chrome.privacy` for managing browser privacy
+	 * settings like network prediction, referrers, etc. **Chrome only.**
+	 *
+	 * @returns {QevoPrivacy} Privacy API instance
+	 *
+	 * @example Manage privacy settings
+	 * ```typescript
+	 * // Get network prediction setting
+	 * const setting = await qevo.privacy.network.networkPredictionEnabled.get({});
+	 *
+	 * // Disable third-party cookies
+	 * await qevo.privacy.websites.thirdPartyCookiesAllowed.set({ value: false });
+	 * ```
+	 */
+	get privacy(): QevoPrivacy;
+	/**
+	 * PageCapture API - Save pages as MHTML
+	 *
+	 * Provides access to `chrome.pageCapture` for saving complete web pages
+	 * as MHTML files. **Chrome only.**
+	 *
+	 * @returns {QevoPageCapture} PageCapture API instance
+	 *
+	 * @example Save page
+	 * ```typescript
+	 * const blob = await qevo.pageCapture.saveAsMHTML({ tabId: tab.id });
+	 * // Save or process the blob
+	 * ```
+	 */
+	get pageCapture(): QevoPageCapture;
+	/**
+	 * FontSettings API - Browser font settings
+	 *
+	 * Provides access to `chrome.fontSettings` for managing browser font
+	 * preferences. **Chrome only.**
+	 *
+	 * @returns {QevoFontSettings} FontSettings API instance
+	 *
+	 * @example Manage fonts
+	 * ```typescript
+	 * // Get font list
+	 * const fonts = await qevo.fontSettings.getFontList();
+	 *
+	 * // Get current font for a script
+	 * const font = await qevo.fontSettings.getFont({
+	 *   genericFamily: 'standard',
+	 *   script: 'Latn'
+	 * });
+	 *
+	 * // Set minimum font size
+	 * await qevo.fontSettings.setMinimumFontSize({ pixelSize: 12 });
+	 * ```
+	 */
+	get fontSettings(): QevoFontSettings;
+	/**
 	 * Check if code is running in a background script context
 	 *
 	 * Useful for conditionally executing code that should only run
@@ -6800,6 +10602,201 @@ export declare const idle: QevoIdle;
  * @see {@link Qevo.runtime}
  */
 export declare const runtime: QevoRuntime;
+/**
+ * Direct access to the WebNavigation API
+ *
+ * @example
+ * ```typescript
+ * import { webNavigation } from './qevo';
+ *
+ * webNavigation.on('Completed', (details) => console.log('Loaded:', details.url));
+ * ```
+ *
+ * @see {@link Qevo.webNavigation}
+ */
+export declare const webNavigation: QevoWebNavigation;
+/**
+ * Direct access to the DeclarativeNetRequest API (MV3)
+ *
+ * @example
+ * ```typescript
+ * import { declarativeNetRequest } from './qevo';
+ *
+ * await declarativeNetRequest.updateDynamicRules({ addRules: [rule] });
+ * ```
+ *
+ * @see {@link Qevo.declarativeNetRequest}
+ */
+export declare const declarativeNetRequest: QevoDeclarativeNetRequest;
+/**
+ * Direct access to the Devtools API
+ *
+ * @example
+ * ```typescript
+ * import { devtools } from './qevo';
+ *
+ * const panel = await devtools.panels.create('My Panel', 'icon.png', 'panel.html');
+ * ```
+ *
+ * @see {@link Qevo.devtools}
+ */
+export declare const devtools: QevoDevtools;
+/**
+ * Direct access to the Management API
+ *
+ * @example
+ * ```typescript
+ * import { management } from './qevo';
+ *
+ * const extensions = await management.getAll();
+ * ```
+ *
+ * @see {@link Qevo.management}
+ */
+export declare const management: QevoManagement;
+/**
+ * Direct access to the Sessions API
+ *
+ * @example
+ * ```typescript
+ * import { sessions } from './qevo';
+ *
+ * const recent = await sessions.getRecentlyClosed({ maxResults: 10 });
+ * ```
+ *
+ * @see {@link Qevo.sessions}
+ */
+export declare const sessions: QevoSessions;
+/**
+ * Direct access to the Proxy API
+ *
+ * @example
+ * ```typescript
+ * import { proxy } from './qevo';
+ *
+ * const settings = await proxy.getSettings();
+ * ```
+ *
+ * @see {@link Qevo.proxy}
+ */
+export declare const proxy: QevoProxy;
+/**
+ * Direct access to the BrowsingData API
+ *
+ * @example
+ * ```typescript
+ * import { browsingData } from './qevo';
+ *
+ * await browsingData.removeCache({});
+ * ```
+ *
+ * @see {@link Qevo.browsingData}
+ */
+export declare const browsingData: QevoBrowsingData;
+/**
+ * Direct access to the SidePanel API (Chrome MV3)
+ *
+ * @example
+ * ```typescript
+ * import { sidePanel } from './qevo';
+ *
+ * await sidePanel.setOptions({ path: 'sidepanel.html', enabled: true });
+ * ```
+ *
+ * @see {@link Qevo.sidePanel}
+ */
+export declare const sidePanel: QevoSidePanel;
+/**
+ * Direct access to the Offscreen API (Chrome MV3)
+ *
+ * @example
+ * ```typescript
+ * import { offscreen } from './qevo';
+ *
+ * await offscreen.createDocument({ url: 'offscreen.html', reasons: ['DOM_PARSER'], justification: 'Parse HTML' });
+ * ```
+ *
+ * @see {@link Qevo.offscreen}
+ */
+export declare const offscreen: QevoOffscreen;
+/**
+ * Direct access to the Omnibox API
+ *
+ * @example
+ * ```typescript
+ * import { omnibox } from './qevo';
+ *
+ * omnibox.setDefaultSuggestion({ description: 'Search for %s' });
+ * ```
+ *
+ * @see {@link Qevo.omnibox}
+ */
+export declare const omnibox: QevoOmnibox;
+/**
+ * Direct access to the TopSites API
+ *
+ * @example
+ * ```typescript
+ * import { topSites } from './qevo';
+ *
+ * const sites = await topSites.get();
+ * ```
+ *
+ * @see {@link Qevo.topSites}
+ */
+export declare const topSites: QevoTopSites;
+/**
+ * Direct access to the TTS API
+ *
+ * @example
+ * ```typescript
+ * import { tts } from './qevo';
+ *
+ * await tts.speak('Hello, world!');
+ * ```
+ *
+ * @see {@link Qevo.tts}
+ */
+export declare const tts: QevoTts;
+/**
+ * Direct access to the Privacy API (Chrome)
+ *
+ * @example
+ * ```typescript
+ * import { privacy } from './qevo';
+ *
+ * const setting = await privacy.network.networkPredictionEnabled.get({});
+ * ```
+ *
+ * @see {@link Qevo.privacy}
+ */
+export declare const privacy: QevoPrivacy;
+/**
+ * Direct access to the PageCapture API (Chrome)
+ *
+ * @example
+ * ```typescript
+ * import { pageCapture } from './qevo';
+ *
+ * const blob = await pageCapture.saveAsMHTML({ tabId: tab.id });
+ * ```
+ *
+ * @see {@link Qevo.pageCapture}
+ */
+export declare const pageCapture: QevoPageCapture;
+/**
+ * Direct access to the FontSettings API (Chrome)
+ *
+ * @example
+ * ```typescript
+ * import { fontSettings } from './qevo';
+ *
+ * const fonts = await fontSettings.getFontList();
+ * ```
+ *
+ * @see {@link Qevo.fontSettings}
+ */
+export declare const fontSettings: QevoFontSettings;
 
 export {
 	CookieStore$1 as CookieStore,
