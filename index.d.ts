@@ -5570,6 +5570,10 @@ export interface RuntimeOnMessageEvent {
 export interface RuntimeSendMessageOptions {
 	includeTlsChannelId?: boolean;
 }
+/**
+ * Native runtime.sendMessage callback.
+ */
+export type RuntimeSendMessageCallback<R = any> = (response?: R) => void;
 declare class QevoRuntime extends QevoLogger {
 	private installedListeners;
 	private startupListeners;
@@ -5686,6 +5690,13 @@ declare class QevoRuntime extends QevoLogger {
 	 */
 	sendMessage<M = any, R = any>(message: M): Promise<R>;
 	/**
+	 * Send a native runtime message within the current extension with callback.
+	 *
+	 * @param message - Message payload
+	 * @param callback - Native runtime response callback
+	 */
+	sendMessage<M = any, R = any>(message: M, callback: RuntimeSendMessageCallback<R>): void;
+	/**
 	 * Send a native runtime message within the current extension with options.
 	 *
 	 * @param message - Message payload
@@ -5693,6 +5704,14 @@ declare class QevoRuntime extends QevoLogger {
 	 * @returns Promise resolving to the receiver response
 	 */
 	sendMessage<M = any, R = any>(message: M, options: RuntimeSendMessageOptions): Promise<R>;
+	/**
+	 * Send a native runtime message within the current extension with options and callback.
+	 *
+	 * @param message - Message payload
+	 * @param options - Native runtime message options
+	 * @param callback - Native runtime response callback
+	 */
+	sendMessage<M = any, R = any>(message: M, options: RuntimeSendMessageOptions, callback: RuntimeSendMessageCallback<R>): void;
 	/**
 	 * Send a native runtime message to another extension.
 	 *
@@ -5702,6 +5721,14 @@ declare class QevoRuntime extends QevoLogger {
 	 */
 	sendMessage<M = any, R = any>(extensionId: string, message: M): Promise<R>;
 	/**
+	 * Send a native runtime message to another extension with callback.
+	 *
+	 * @param extensionId - Target extension ID
+	 * @param message - Message payload
+	 * @param callback - Native runtime response callback
+	 */
+	sendMessage<M = any, R = any>(extensionId: string, message: M, callback: RuntimeSendMessageCallback<R>): void;
+	/**
 	 * Send a native runtime message to another extension with options.
 	 *
 	 * @param extensionId - Target extension ID
@@ -5710,6 +5737,15 @@ declare class QevoRuntime extends QevoLogger {
 	 * @returns Promise resolving to the receiver response
 	 */
 	sendMessage<M = any, R = any>(extensionId: string, message: M, options: RuntimeSendMessageOptions): Promise<R>;
+	/**
+	 * Send a native runtime message to another extension with options and callback.
+	 *
+	 * @param extensionId - Target extension ID
+	 * @param message - Message payload
+	 * @param options - Native runtime message options
+	 * @param callback - Native runtime response callback
+	 */
+	sendMessage<M = any, R = any>(extensionId: string, message: M, options: RuntimeSendMessageOptions, callback: RuntimeSendMessageCallback<R>): void;
 	/**
 	 * Connect to another extension or native app
 	 *
@@ -5810,6 +5846,9 @@ declare class QevoRuntime extends QevoLogger {
 	isAvailable(): boolean;
 	private ensureListenersInitialized;
 	private isRuntimeSendMessageOptions;
+	private isRuntimeSendMessageCallback;
+	private resolveRuntimeSendMessageArgs;
+	private sendRuntimeMessagePromise;
 }
 /**
  * WebNavigation event types for the simplified API
