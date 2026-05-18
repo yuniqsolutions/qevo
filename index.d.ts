@@ -1434,7 +1434,6 @@ export interface CookiesAPI {
 		hasListener(callback: CookieChangeListener): boolean;
 	};
 }
-declare const browserAPI: typeof chrome & typeof browser;
 declare class QevoLogger {
 	protected _debug: boolean;
 	constructor(debug?: boolean);
@@ -5521,9 +5520,26 @@ export type UpdateAvailableListener = (details: {
 	version: string;
 }) => void;
 /**
+ * Native runtime message response callback.
+ */
+export type RuntimeMessageSendResponse = (response?: any) => void;
+/**
+ * Native runtime message listener type.
+ *
+ * This mirrors the browser's `runtime.onMessage` listener signature so consumers
+ * can use `qevo.runtime.onMessage.addListener(...)` the same way they would use
+ * `chrome.runtime.onMessage.addListener(...)` or `browser.runtime.onMessage.addListener(...)`.
+ */
+export type RuntimeMessageListener = (message: any, sender: MessageSender$1, sendResponse: RuntimeMessageSendResponse) => void | boolean | Promise<any>;
+/**
  * Native runtime.onMessage event object.
  */
-export type RuntimeOnMessageEvent = typeof browserAPI.runtime.onMessage;
+export interface RuntimeOnMessageEvent {
+	addListener(callback: RuntimeMessageListener): void;
+	removeListener(callback: RuntimeMessageListener): void;
+	hasListener(callback: RuntimeMessageListener): boolean;
+	hasListeners(): boolean;
+}
 declare class QevoRuntime extends QevoLogger {
 	private installedListeners;
 	private startupListeners;
