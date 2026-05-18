@@ -5541,7 +5541,13 @@ export type UpdateAvailableListener = (details: {
 	version: string;
 }) => void;
 /**
- * Native runtime message response callback.
+ * Callback used to send a response to a `runtime.onMessage` sender.
+ *
+ * Mirrors Chrome's native `sendResponse` callback semantics.
+ *
+ * @param response - The JSON-serializable response object to send back to the
+ * sender. This becomes invalid when the listener returns unless the listener
+ * returns `true` to keep the message channel open for asynchronous work.
  */
 export type RuntimeMessageSendResponse = (response?: any) => void;
 /**
@@ -5550,15 +5556,41 @@ export type RuntimeMessageSendResponse = (response?: any) => void;
  * This mirrors the browser's `runtime.onMessage` listener signature so consumers
  * can use `qevo.runtime.onMessage.addListener(...)` the same way they would use
  * `chrome.runtime.onMessage.addListener(...)` or `browser.runtime.onMessage.addListener(...)`.
+ *
+ * @param message - The message sent by the calling script.
+ * @param sender - Information about the script context that opened the connection.
+ * @param sendResponse - Function to call, at most once, to send a response back
+ * to the sender.
+ * @returns `true` to indicate you wish to send a response asynchronously, or
+ * nothing for a synchronous/no response flow.
  */
 export type RuntimeMessageListener = (message: any, sender: RuntimeMessageSender, sendResponse: RuntimeMessageSendResponse) => void | boolean | Promise<any>;
 /**
  * Native runtime.onMessage event object.
  */
 export interface RuntimeOnMessageEvent {
+	/**
+	 * Registers a listener for `runtime.onMessage`.
+	 *
+	 * @param callback - The function called when a message is sent from an
+	 * extension process or content script.
+	 */
 	addListener(callback: RuntimeMessageListener): void;
+	/**
+	 * Unregisters a previously added `runtime.onMessage` listener.
+	 *
+	 * @param callback - The exact listener function that was previously added.
+	 */
 	removeListener(callback: RuntimeMessageListener): void;
+	/**
+	 * Checks whether a given `runtime.onMessage` listener is registered.
+	 *
+	 * @param callback - The listener function to look up.
+	 */
 	hasListener(callback: RuntimeMessageListener): boolean;
+	/**
+	 * Checks whether any `runtime.onMessage` listeners are registered.
+	 */
 	hasListeners(): boolean;
 }
 /**
@@ -5571,7 +5603,13 @@ export interface RuntimeSendMessageOptions {
 	includeTlsChannelId?: boolean;
 }
 /**
- * Native runtime.sendMessage callback.
+ * Callback invoked when `runtime.sendMessage` receives a response.
+ *
+ * Mirrors Chrome's native runtime messaging callback shape.
+ *
+ * @param response - The response object sent by the message receiver. If an
+ * error occurs while connecting to the extension, `runtime.lastError` will be
+ * set before the callback runs.
  */
 export type RuntimeSendMessageCallback<R = any> = (response?: R) => void;
 declare class QevoRuntime extends QevoLogger {
