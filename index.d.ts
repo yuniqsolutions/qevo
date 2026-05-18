@@ -5561,6 +5561,15 @@ export interface RuntimeOnMessageEvent {
 	hasListener(callback: RuntimeMessageListener): boolean;
 	hasListeners(): boolean;
 }
+/**
+ * Native runtime.sendMessage options.
+ *
+ * This matches the common cross-browser runtime message options shape used by
+ * Chrome and Firefox.
+ */
+export interface RuntimeSendMessageOptions {
+	includeTlsChannelId?: boolean;
+}
 declare class QevoRuntime extends QevoLogger {
 	private installedListeners;
 	private startupListeners;
@@ -5665,6 +5674,43 @@ declare class QevoRuntime extends QevoLogger {
 	 */
 	setUninstallURL(url: string): Promise<void>;
 	/**
+	 * Send a native runtime message within the current extension.
+	 *
+	 * @param message - Message payload
+	 * @returns Promise resolving to the receiver response
+	 *
+	 * @example
+	 * ```typescript
+	 * const response = await runtime.sendMessage({ type: 'ping' });
+	 * ```
+	 */
+	sendMessage<M = any, R = any>(message: M): Promise<R>;
+	/**
+	 * Send a native runtime message within the current extension with options.
+	 *
+	 * @param message - Message payload
+	 * @param options - Native runtime message options
+	 * @returns Promise resolving to the receiver response
+	 */
+	sendMessage<M = any, R = any>(message: M, options: RuntimeSendMessageOptions): Promise<R>;
+	/**
+	 * Send a native runtime message to another extension.
+	 *
+	 * @param extensionId - Target extension ID
+	 * @param message - Message payload
+	 * @returns Promise resolving to the receiver response
+	 */
+	sendMessage<M = any, R = any>(extensionId: string, message: M): Promise<R>;
+	/**
+	 * Send a native runtime message to another extension with options.
+	 *
+	 * @param extensionId - Target extension ID
+	 * @param message - Message payload
+	 * @param options - Native runtime message options
+	 * @returns Promise resolving to the receiver response
+	 */
+	sendMessage<M = any, R = any>(extensionId: string, message: M, options: RuntimeSendMessageOptions): Promise<R>;
+	/**
 	 * Connect to another extension or native app
 	 *
 	 * @param connectInfo - Connection info with optional name
@@ -5763,6 +5809,7 @@ declare class QevoRuntime extends QevoLogger {
 	 */
 	isAvailable(): boolean;
 	private ensureListenersInitialized;
+	private isRuntimeSendMessageOptions;
 }
 /**
  * WebNavigation event types for the simplified API
