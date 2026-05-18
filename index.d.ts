@@ -1266,7 +1266,7 @@ export interface CookiePartitionKey {
 /**
  * Represents a cookie store in the browser
  */
-interface CookieStore$1 {
+export interface QevoCookieStore {
 	/** The unique identifier for the cookie store */
 	id: string;
 	/** Identifiers of all the browser tabs that share this cookie store */
@@ -1424,7 +1424,7 @@ export interface CookiesAPI {
 	 * Lists all existing cookie stores
 	 * Can return its result via Promise in Manifest V3 or later
 	 */
-	getAllCookieStores(): Promise<CookieStore$1[]>;
+	getAllCookieStores(): Promise<QevoCookieStore[]>;
 	/**
 	 * Fired when a cookie is set or removed
 	 */
@@ -1583,7 +1583,7 @@ declare class QevoCookies extends QevoLogger {
 	 * });
 	 * ```
 	 */
-	getAllCookieStores(): Promise<CookieStore$1[]>;
+	getAllCookieStores(): Promise<QevoCookieStore[]>;
 	/**
 	 * Add a listener for cookie changes (internal)
 	 * @internal
@@ -2707,7 +2707,10 @@ export interface NotificationItem {
 	/** Item message */
 	message: string;
 }
-interface NotificationOptions$1 {
+/**
+ * Options for creating a notification
+ */
+export interface QevoNotificationOptions {
 	/** Notification type */
 	type: NotificationTemplateType;
 	/** Notification title */
@@ -2786,7 +2789,7 @@ declare class QevoNotifications extends QevoLogger {
 	 * });
 	 * ```
 	 */
-	create(options: NotificationOptions$1): Promise<string>;
+	create(options: QevoNotificationOptions): Promise<string>;
 	/**
 	 * Create and display a notification with a specific ID
 	 *
@@ -2808,7 +2811,7 @@ declare class QevoNotifications extends QevoLogger {
 	 * await notifications.update('upload-progress', { progress: 75 });
 	 * ```
 	 */
-	create(options: NotificationOptions$1, notificationId: string): Promise<string>;
+	create(options: QevoNotificationOptions, notificationId: string): Promise<string>;
 	/**
 	 * Update an existing notification
 	 *
@@ -2825,7 +2828,7 @@ declare class QevoNotifications extends QevoLogger {
 	 * });
 	 * ```
 	 */
-	update(notificationId: string, options: Partial<NotificationOptions$1>): Promise<boolean>;
+	update(notificationId: string, options: Partial<QevoNotificationOptions>): Promise<boolean>;
 	/**
 	 * Clear a specific notification
 	 *
@@ -2850,7 +2853,7 @@ declare class QevoNotifications extends QevoLogger {
 	 * ```
 	 */
 	getAll(): Promise<{
-		[id: string]: NotificationOptions$1;
+		[id: string]: QevoNotificationOptions;
 	}>;
 	/**
 	 * Register a listener for notification clicks
@@ -2948,7 +2951,10 @@ export type ContextType = "all" | "page" | "frame" | "selection" | "link" | "edi
  * Type of menu item
  */
 export type ItemType = "normal" | "checkbox" | "radio" | "separator";
-interface CreateProperties$1 {
+/**
+ * Options for creating a context menu item
+ */
+export interface ContextMenuCreateProperties {
 	/** Unique ID for the menu item */
 	id?: string;
 	/** Type of menu item */
@@ -2972,7 +2978,10 @@ interface CreateProperties$1 {
 	/** Whether item is enabled */
 	enabled?: boolean;
 }
-interface UpdateProperties$1 {
+/**
+ * Options for updating a menu item
+ */
+export interface ContextMenuUpdateProperties {
 	type?: ItemType;
 	title?: string;
 	checked?: boolean;
@@ -3056,7 +3065,7 @@ declare class QevoContextMenus extends QevoLogger {
 	 * });
 	 * ```
 	 */
-	create(createProperties: CreateProperties$1): Promise<string | number>;
+	create(createProperties: ContextMenuCreateProperties): Promise<string | number>;
 	/**
 	 * Update an existing menu item by string ID
 	 *
@@ -3070,7 +3079,7 @@ declare class QevoContextMenus extends QevoLogger {
 	 * });
 	 * ```
 	 */
-	update(id: string, updateProperties: UpdateProperties$1): Promise<void>;
+	update(id: string, updateProperties: ContextMenuUpdateProperties): Promise<void>;
 	/**
 	 * Update an existing menu item by numeric ID
 	 *
@@ -3084,7 +3093,7 @@ declare class QevoContextMenus extends QevoLogger {
 	 * });
 	 * ```
 	 */
-	update(id: number, updateProperties: UpdateProperties$1): Promise<void>;
+	update(id: number, updateProperties: ContextMenuUpdateProperties): Promise<void>;
 	/**
 	 * Remove a specific menu item by string ID
 	 *
@@ -3718,7 +3727,10 @@ declare class QevoAction extends QevoLogger {
  * Window state types
  */
 export type WindowState = "normal" | "minimized" | "maximized" | "fullscreen" | "docked";
-type WindowType$1 = "normal" | "popup" | "panel" | "devtools";
+/**
+ * Window type
+ */
+export type QevoWindowType = "normal" | "popup" | "panel" | "devtools";
 /**
  * Options for creating a window
  */
@@ -3740,7 +3752,7 @@ export interface CreateWindowData {
 	/** Whether the window is incognito */
 	incognito?: boolean;
 	/** Window type */
-	type?: WindowType$1;
+	type?: QevoWindowType;
 	/** Window state */
 	state?: WindowState;
 	/** Whether to set the new window as the active window (Chrome only) */
@@ -3772,9 +3784,12 @@ export interface QueryWindowInfo {
 	/** Whether to populate tabs array */
 	populate?: boolean;
 	/** Filter by window types */
-	windowTypes?: WindowType$1[];
+	windowTypes?: QevoWindowType[];
 }
-interface Window$1 {
+/**
+ * Browser window information
+ */
+export interface QevoWindow {
 	/** Window ID */
 	id?: number;
 	/** Whether this is the currently focused window */
@@ -3790,7 +3805,7 @@ interface Window$1 {
 	/** Whether window is incognito */
 	incognito: boolean;
 	/** Window type */
-	type?: WindowType$1;
+	type?: QevoWindowType;
 	/** Window state */
 	state?: WindowState;
 	/** Whether window always appears on top */
@@ -3807,7 +3822,7 @@ export type FocusChangedListener = (windowId: number) => void;
 /**
  * Callback for window created events
  */
-export type WindowCreatedListener = (window: Window$1) => void;
+export type WindowCreatedListener = (window: QevoWindow) => void;
 /**
  * Callback for window removed events
  */
@@ -3857,8 +3872,8 @@ declare class QevoWindows extends QevoLogger {
 	 * });
 	 * ```
 	 */
-	create(): Promise<Window$1>;
-	create(createData: CreateWindowData): Promise<Window$1>;
+	create(): Promise<QevoWindow>;
+	create(createData: CreateWindowData): Promise<QevoWindow>;
 	/**
 	 * Get a specific window by ID
 	 *
@@ -3872,8 +3887,8 @@ declare class QevoWindows extends QevoLogger {
 	 * console.log('Tabs in window:', win.tabs?.length);
 	 * ```
 	 */
-	get(windowId: number): Promise<Window$1>;
-	get(windowId: number, getInfo: QueryWindowInfo): Promise<Window$1>;
+	get(windowId: number): Promise<QevoWindow>;
+	get(windowId: number, getInfo: QueryWindowInfo): Promise<QevoWindow>;
 	/**
 	 * Get the current window
 	 *
@@ -3886,8 +3901,8 @@ declare class QevoWindows extends QevoLogger {
 	 * console.log('Current window has', current.tabs?.length, 'tabs');
 	 * ```
 	 */
-	getCurrent(): Promise<Window$1>;
-	getCurrent(getInfo: QueryWindowInfo): Promise<Window$1>;
+	getCurrent(): Promise<QevoWindow>;
+	getCurrent(getInfo: QueryWindowInfo): Promise<QevoWindow>;
 	/**
 	 * Get the last focused window
 	 *
@@ -3900,8 +3915,8 @@ declare class QevoWindows extends QevoLogger {
 	 * console.log('Last focused window:', lastFocused.id);
 	 * ```
 	 */
-	getLastFocused(): Promise<Window$1>;
-	getLastFocused(getInfo: QueryWindowInfo): Promise<Window$1>;
+	getLastFocused(): Promise<QevoWindow>;
+	getLastFocused(getInfo: QueryWindowInfo): Promise<QevoWindow>;
 	/**
 	 * Get all windows
 	 *
@@ -3916,8 +3931,8 @@ declare class QevoWindows extends QevoLogger {
 	 * });
 	 * ```
 	 */
-	getAll(): Promise<Window$1[]>;
-	getAll(getInfo: QueryWindowInfo): Promise<Window$1[]>;
+	getAll(): Promise<QevoWindow[]>;
+	getAll(getInfo: QueryWindowInfo): Promise<QevoWindow[]>;
 	/**
 	 * Update a window's properties
 	 *
@@ -3943,7 +3958,7 @@ declare class QevoWindows extends QevoLogger {
 	 * await windows.update(123, { focused: true });
 	 * ```
 	 */
-	update(windowId: number, updateInfo: UpdateWindowInfo): Promise<Window$1>;
+	update(windowId: number, updateInfo: UpdateWindowInfo): Promise<QevoWindow>;
 	/**
 	 * Close a window
 	 *
@@ -4016,7 +4031,10 @@ declare class QevoWindows extends QevoLogger {
 	 */
 	private ensureListenersInitialized;
 }
-interface Permissions$1 {
+/**
+ * Permissions object
+ */
+export interface ExtensionPermissions {
 	/** API permissions (e.g., 'history', 'bookmarks') */
 	permissions?: string[];
 	/** Host permissions (URL patterns) */
@@ -4025,11 +4043,11 @@ interface Permissions$1 {
 /**
  * Callback for permission added events
  */
-export type PermissionsAddedListener = (permissions: Permissions$1) => void;
+export type PermissionsAddedListener = (permissions: ExtensionPermissions) => void;
 /**
  * Callback for permission removed events
  */
-export type PermissionsRemovedListener = (permissions: Permissions$1) => void;
+export type PermissionsRemovedListener = (permissions: ExtensionPermissions) => void;
 declare class QevoPermissions extends QevoLogger {
 	private addedListeners;
 	private removedListeners;
@@ -4063,7 +4081,7 @@ declare class QevoPermissions extends QevoLogger {
 	 * });
 	 * ```
 	 */
-	contains(permissions: Permissions$1): Promise<boolean>;
+	contains(permissions: ExtensionPermissions): Promise<boolean>;
 	/**
 	 * Get all currently granted permissions
 	 *
@@ -4076,7 +4094,7 @@ declare class QevoPermissions extends QevoLogger {
 	 * console.log('Origins:', all.origins);
 	 * ```
 	 */
-	getAll(): Promise<Permissions$1>;
+	getAll(): Promise<ExtensionPermissions>;
 	/**
 	 * Request additional permissions
 	 *
@@ -4102,7 +4120,7 @@ declare class QevoPermissions extends QevoLogger {
 	 * };
 	 * ```
 	 */
-	request(permissions: Permissions$1): Promise<boolean>;
+	request(permissions: ExtensionPermissions): Promise<boolean>;
 	/**
 	 * Remove previously granted permissions
 	 *
@@ -4117,7 +4135,7 @@ declare class QevoPermissions extends QevoLogger {
 	 * });
 	 * ```
 	 */
-	remove(permissions: Permissions$1): Promise<boolean>;
+	remove(permissions: ExtensionPermissions): Promise<boolean>;
 	/**
 	 * Register a listener for permission additions
 	 *
@@ -5266,8 +5284,8 @@ declare class QevoI18n extends QevoLogger {
 	 * // "welcomeMessage": {
 	 * //   "message": "Hello $NAME$! You have $COUNT$ messages.",
 	 * //   "placeholders": {
-	 * //     "name": { "content": "$1" },
-	 * //     "count": { "content": "$2" }
+	 * //     "name": { "content": "<first-arg>" },
+	 * //     "count": { "content": "<second-arg>" }
 	 * //   }
 	 * // }
 	 *
@@ -5454,7 +5472,10 @@ export interface InstalledDetails {
 	/** ID of imported shared module (if applicable) */
 	id?: string;
 }
-interface MessageSender$1 {
+/**
+ * Message sender information
+ */
+export interface RuntimeMessageSender {
 	/** Tab that sent the message */
 	tab?: chrome.tabs.Tab;
 	/** Frame ID */
@@ -5481,7 +5502,7 @@ export interface Port {
 	/** Port name */
 	name: string;
 	/** Sender information */
-	sender?: MessageSender$1;
+	sender?: RuntimeMessageSender;
 	/** Disconnect the port */
 	disconnect(): void;
 	/** Post a message */
@@ -5530,7 +5551,7 @@ export type RuntimeMessageSendResponse = (response?: any) => void;
  * can use `qevo.runtime.onMessage.addListener(...)` the same way they would use
  * `chrome.runtime.onMessage.addListener(...)` or `browser.runtime.onMessage.addListener(...)`.
  */
-export type RuntimeMessageListener = (message: any, sender: MessageSender$1, sendResponse: RuntimeMessageSendResponse) => void | boolean | Promise<any>;
+export type RuntimeMessageListener = (message: any, sender: RuntimeMessageSender, sendResponse: RuntimeMessageSendResponse) => void | boolean | Promise<any>;
 /**
  * Native runtime.onMessage event object.
  */
@@ -8750,7 +8771,7 @@ declare class QevoTts extends QevoLogger {
 /**
  * Level of control for a setting
  */
-export type LevelOfControl = "not_controllable" | "controlled_by_other_extensions" | "controllable_by_this_extension" | "controlled_by_this_extension";
+export type PrivacyLevelOfControl = "not_controllable" | "controlled_by_other_extensions" | "controllable_by_this_extension" | "controlled_by_this_extension";
 /**
  * Scope for setting a value
  */
@@ -8762,7 +8783,7 @@ export interface SettingGetResult<T> {
 	/** The current value */
 	value: T;
 	/** Level of control */
-	levelOfControl: LevelOfControl;
+	levelOfControl: PrivacyLevelOfControl;
 	/** Whether incognito has specific setting */
 	incognitoSpecific?: boolean;
 }
@@ -8799,11 +8820,11 @@ export interface ChromeSetting<T> {
 	onChange: {
 		addListener(callback: (details: {
 			value: T;
-			levelOfControl: LevelOfControl;
+			levelOfControl: PrivacyLevelOfControl;
 		}) => void): void;
 		removeListener(callback: (details: {
 			value: T;
-			levelOfControl: LevelOfControl;
+			levelOfControl: PrivacyLevelOfControl;
 		}) => void): void;
 	};
 }
@@ -9005,7 +9026,10 @@ export interface SetFontDetails extends FontDetails {
 	/** The font ID to set */
 	fontId: string;
 }
-type LevelOfControl$1 = "not_controllable" | "controlled_by_other_extensions" | "controllable_by_this_extension" | "controlled_by_this_extension";
+/**
+ * Level of control for font settings
+ */
+export type FontSettingsLevelOfControl = "not_controllable" | "controlled_by_other_extensions" | "controllable_by_this_extension" | "controlled_by_this_extension";
 declare class QevoFontSettings extends QevoLogger {
 	constructor(debug?: boolean);
 	/**
@@ -9043,7 +9067,7 @@ declare class QevoFontSettings extends QevoLogger {
 	 */
 	getFont(details: FontDetails): Promise<{
 		fontId: string;
-		levelOfControl: LevelOfControl$1;
+		levelOfControl: FontSettingsLevelOfControl;
 	}>;
 	/**
 	 * Set the font for a given script and generic family
@@ -9076,7 +9100,7 @@ declare class QevoFontSettings extends QevoLogger {
 		incognito?: boolean;
 	}): Promise<{
 		pixelSize: number;
-		levelOfControl: LevelOfControl$1;
+		levelOfControl: FontSettingsLevelOfControl;
 	}>;
 	/**
 	 * Set the default font size
@@ -9099,7 +9123,7 @@ declare class QevoFontSettings extends QevoLogger {
 		incognito?: boolean;
 	}): Promise<{
 		pixelSize: number;
-		levelOfControl: LevelOfControl$1;
+		levelOfControl: FontSettingsLevelOfControl;
 	}>;
 	/**
 	 * Set the default fixed font size
@@ -9120,7 +9144,7 @@ declare class QevoFontSettings extends QevoLogger {
 		incognito?: boolean;
 	}): Promise<{
 		pixelSize: number;
-		levelOfControl: LevelOfControl$1;
+		levelOfControl: FontSettingsLevelOfControl;
 	}>;
 	/**
 	 * Set the minimum font size
@@ -9142,13 +9166,13 @@ declare class QevoFontSettings extends QevoLogger {
 			fontId: string;
 			script?: ScriptCode;
 			genericFamily: GenericFamily;
-			levelOfControl: LevelOfControl$1;
+			levelOfControl: FontSettingsLevelOfControl;
 		}) => void): void;
 		removeListener(callback: (details: {
 			fontId: string;
 			script?: ScriptCode;
 			genericFamily: GenericFamily;
-			levelOfControl: LevelOfControl$1;
+			levelOfControl: FontSettingsLevelOfControl;
 		}) => void): void;
 	};
 	/**
@@ -9157,11 +9181,11 @@ declare class QevoFontSettings extends QevoLogger {
 	get onDefaultFontSizeChanged(): {
 		addListener(callback: (details: {
 			pixelSize: number;
-			levelOfControl: LevelOfControl$1;
+			levelOfControl: FontSettingsLevelOfControl;
 		}) => void): void;
 		removeListener(callback: (details: {
 			pixelSize: number;
-			levelOfControl: LevelOfControl$1;
+			levelOfControl: FontSettingsLevelOfControl;
 		}) => void): void;
 	};
 	/**
@@ -9170,11 +9194,11 @@ declare class QevoFontSettings extends QevoLogger {
 	get onDefaultFixedFontSizeChanged(): {
 		addListener(callback: (details: {
 			pixelSize: number;
-			levelOfControl: LevelOfControl$1;
+			levelOfControl: FontSettingsLevelOfControl;
 		}) => void): void;
 		removeListener(callback: (details: {
 			pixelSize: number;
-			levelOfControl: LevelOfControl$1;
+			levelOfControl: FontSettingsLevelOfControl;
 		}) => void): void;
 	};
 	/**
@@ -9183,11 +9207,11 @@ declare class QevoFontSettings extends QevoLogger {
 	get onMinimumFontSizeChanged(): {
 		addListener(callback: (details: {
 			pixelSize: number;
-			levelOfControl: LevelOfControl$1;
+			levelOfControl: FontSettingsLevelOfControl;
 		}) => void): void;
 		removeListener(callback: (details: {
 			pixelSize: number;
-			levelOfControl: LevelOfControl$1;
+			levelOfControl: FontSettingsLevelOfControl;
 		}) => void): void;
 	};
 }
@@ -10550,7 +10574,7 @@ export declare const downloads: QevoDownloads;
  *
  * @see {@link Qevo.history}
  */
-declare const history$1: QevoHistory;
+declare const historyApi: QevoHistory;
 /**
  * Direct access to the Bookmarks API
  *
@@ -10832,8 +10856,8 @@ export declare const pageCapture: QevoPageCapture;
 export declare const fontSettings: QevoFontSettings;
 
 export {
-	CookieStore$1 as CookieStore,
-	history$1 as history,
+	MessageSender as QevoMessageSender,
+	historyApi as history,
 	qevo as default,
 };
 
